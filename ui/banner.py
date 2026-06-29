@@ -1,131 +1,149 @@
-import customtkinter as ctk
-import time
+from PySide6.QtWidgets import QWidget, QLabel, QGraphicsOpacityEffect, QApplication
+from PySide6.QtCore import Qt, QPropertyAnimation, QTimer, QEasingCurve, Property
+from PySide6.QtGui import QFont, QColor, QPalette
 
-class BannerWindow(ctk.CTkToplevel):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        
-        self.overrideredirect(True)
-        self.attributes('-topmost', True)
-        self.attributes('-alpha', 0.0)
-        self.attributes("-transparentcolor", "black") # Set transparent key color
-        
-        # Determine screen size (primary monitor)
-        self.screen_width = self.winfo_screenwidth()
-        self.screen_height = self.winfo_screenheight()
-        
-        self.frame = ctk.CTkFrame(self, corner_radius=10, bg_color="black") # Set frame bg to match transparent key
-        self.frame.pack(fill="both", expand=True, padx=0, pady=0) # Remove padding that caused the border
-        
-        self.label = ctk.CTkLabel(self.frame, text="", font=("Segoe UI", 24, "bold"))
-        self.label.pack(expand=True, padx=20, pady=10)
-        
-        self.withdraw() # Hide initially
-        
+
+class BannerWindow(QWidget):
+    """浮动横幅提示窗口"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowFlags(
+            Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Tool
+        )
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+        self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+
         self._is_animating = False
+        self._flash_visible = True
         self._target_text_color = ""
         self._target_bg_color = ""
-        self._start_time = 0
-        self._duration = 0
 
-    def show_message(self, message, bg_color, text_color, font_size, font_family="Segoe UI", position="top", duration=5, offset_x=0, offset_y=0, manual_width=0, manual_height=0):
-        self._is_animating = False # Cancel previous
-        
-        # On Windows, transparent color keying only works if the window background is that color.
-        # CTkToplevel background is usually managed by system.
-        # We need to set the root window background to black (our key) too.
-        self.configure(fg_color="black")
-        
+        # 标签
+        self.label = QLabel("", self)
+        self.label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        # 透明度效果
+        self._opacity_effect = QGraphicsOpacityEffect(self.label)
+        self.label.setGraphicsEffect(self._opacity_effect)
+        self._opacity_effect.setOpacity(0.0)
+
+        # 动画
+        self._fade_anim = QPropertyAnimation(self._opacity_effect, b"opacity")
+        self._fade_anim.setDuration(300)
+
+        # 闪烁定时器
+        self._flash_timer = QTimer(self)
+        self._flash_timer.timeout.connect(self._toggle_flash)
+
+        # 停止定时器
+        self._stop_timer = QTimer(self)
+        self._stop_timer.setSingleShot(True)
+        self._stop_timer.timeout.connect(self._start_fade_out)
+
+    def show_message(self, message, bg_color, text_color, font_size,
+                     font_family="Noto Sans CJK SC", position="top",
+                     duration=5, offset_x=0, offset_y=0,
+                     manual_width=0, manual_height=0):
+        """显示横幅消息"""
+        # 停止之前的动画
+        self._flash_timer.stop()
+        self._stop_timer.stop()
+        self._fade_anim.stop()
+        self._is_animating = True
+        self._flash_visible = True
         self._target_text_color = text_color
         self._target_bg_color = bg_color
-        self._duration = duration
-        
-        self.label.configure(text=message, text_color=text_color, font=(font_family, font_size, "bold"))
-        self.frame.configure(fg_color=bg_color)
-        
-        self.update_idletasks()
-        
-        req_width = self.label.winfo_reqwidth() + 60
-        req_height = self.label.winfo_reqheight() + 30
-        
-        x_pos = (self.screen_width - req_width) // 2
-        
-        # Override screen size if manually set
-        sw = self.screen_width
-        sh = self.screen_height
-        if manual_width > 0: sw = manual_width
-        if manual_height > 0: sh = manual_height
-        
-        x_pos = (sw - req_width) // 2
-        
-        # Apply manual offset
-        x_pos += offset_x
-        
-        # High-DPI Fix: Check if we need to scale the coordinates
-        # On some Windows setups, overrideredirect windows need physical coordinates
-        try:
-            scaling = self._get_window_scaling()
-            if scaling > 1.0:
-                 x_pos = int(x_pos * scaling)
-                 # Note: y_pos is usually fine relative to screen edge, but if top=50 looks small, we can scale it too
-                 # But sticking to x_pos fix for centering primarily.
-        except:
-            pass
 
+        # 设置字体和文字
+        font = QFont(font_family, font_size, QFont.Weight.Bold)
+        self.label.setFont(font)
+        self.label.setText(message)
+
+        # 设置样式
+        self.label.setStyleSheet(f"""
+            QLabel {{
+                color: {text_color};
+                background-color: {bg_color};
+                padding: 15px 30px;
+                border-radius: 10px;
+            }}
+        """)
+
+        # 计算尺寸
+        self.label.adjustSize()
+        label_size = self.label.sizeHint()
+        w = label_size.width() + 60
+        h = label_size.height() + 30
+
+        # 获取屏幕尺寸
+        screen = QApplication.primaryScreen()
+        if screen:
+            geo = screen.geometry()
+            sw = manual_width if manual_width > 0 else geo.width()
+            sh = manual_height if manual_height > 0 else geo.height()
+            screen_x = geo.x()
+            screen_y = geo.y()
+        else:
+            sw, sh = 1920, 1080
+            screen_x, screen_y = 0, 0
+
+        # 计算位置
+        x = screen_x + (sw - w) // 2 + offset_x
         if position == "top":
-            y_pos = 50 + offset_y
+            y = screen_y + 50 + offset_y
         else:
-            y_pos = sh - req_height - 100 + offset_y
-            
-        self.geometry(f"{req_width}x{req_height}+{x_pos}+{y_pos}")
-        self.deiconify()
-        
-        self._is_animating = True
-        self._fade_in(0)
+            y = screen_y + sh - h - 100 + offset_y
 
-    def _fade_in(self, step):
-        if not self._is_animating: return
-        
-        alpha = step / 10.0
-        self.attributes('-alpha', alpha)
-        
-        if step < 10:
-            self.after(30, lambda: self._fade_in(step + 1))
-        else:
-            self._start_time = time.time()
-            self._flash_loop(True)
+        self.setGeometry(x, y, w, h)
+        self.label.setGeometry(0, 0, w, h)
+        self.show()
 
-    def _flash_loop(self, visible):
-        if not self._is_animating: return
-        
-        if time.time() - self._start_time >= self._duration:
-            self.label.configure(text_color=self._target_text_color) # Ensure visible before fade out
-            self._fade_out(10)
+        # 淡入动画
+        self._fade_anim.setStartValue(0.0)
+        self._fade_anim.setEndValue(1.0)
+        self._fade_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
+        self._fade_anim.start()
+
+        # 启动闪烁（淡入完成后）
+        QTimer.singleShot(350, self._start_flash)
+
+        # 自动关闭
+        self._stop_timer.start(duration * 1000)
+
+    def _start_flash(self):
+        if self._is_animating:
+            self._flash_visible = True
+            self._flash_timer.start(500)
+
+    def _toggle_flash(self):
+        if not self._is_animating:
             return
+        self._flash_visible = not self._flash_visible
+        color = self._target_text_color if self._flash_visible else self._target_bg_color
+        self.label.setStyleSheet(f"""
+            QLabel {{
+                color: {color};
+                background-color: {self._target_bg_color};
+                padding: 15px 30px;
+                border-radius: 10px;
+            }}
+        """)
 
-        # Toggle color between text color and background color (to make it invisible)
-        color = self._target_text_color if visible else self._target_bg_color
-        
-        self.label.configure(text_color=color)
-        
-        # Flash rate: 500ms
-        self.after(500, lambda: self._flash_loop(not visible))
+    def _start_fade_out(self):
+        self._flash_timer.stop()
+        self._fade_anim.setStartValue(1.0)
+        self._fade_anim.setEndValue(0.0)
+        self._fade_anim.setEasingCurve(QEasingCurve.Type.InCubic)
+        self._fade_anim.finished.connect(self._on_fade_out_done)
+        self._fade_anim.start()
 
-    def _fade_out(self, step):
-        if not self._is_animating: return
-        
-        alpha = step / 10.0
-        self.attributes('-alpha', alpha)
-        
-        if step > 0:
-            self.after(30, lambda: self._fade_out(step - 1))
-        else:
-            self.withdraw()
-            self._is_animating = False
-
-if __name__ == "__main__":
-    app = ctk.CTk()
-    app.withdraw()
-    banner = BannerWindow(app)
-    banner.show_message("5 Minutes Remaining!", "orange", "white", 24)
-    app.mainloop()
+    def _on_fade_out_done(self):
+        self._is_animating = False
+        self.hide()
+        try:
+            self._fade_anim.finished.disconnect(self._on_fade_out_done)
+        except RuntimeError:
+            pass

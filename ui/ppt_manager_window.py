@@ -1,142 +1,191 @@
-import customtkinter as ctk
-from tkinter import filedialog
-from config import cfg
 import os
+from PySide6.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QFrame,
+    QFileDialog, QDialog
+)
+from PySide6.QtCore import Qt
+from qfluentwidgets import (
+    FluentWindow, CardWidget, GroupHeaderCardWidget,
+    LineEdit, DoubleSpinBox, PushButton, PrimaryPushButton,
+    BodyLabel, StrongBodyLabel, CaptionLabel,
+    FluentIcon as FIF, MessageBox
+)
+from config import cfg
 
-class PPTManagerWindow(ctk.CTkToplevel):
-    def __init__(self, parent):
+
+class PPTManagerWindow(QWidget):
+    """PPT 文件时间管理窗口"""
+
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.title("PPT文件时间管理")
-        self.geometry("650x500")
-        self.resizable(True, True)
-        self.attributes('-topmost', True)
+        self.setWindowTitle("PPT文件时间管理")
+        self.resize(660, 500)
+        self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Dialog)
+        self._init_ui()
 
-        # Center on screen
-        self.update_idletasks()
-        width = self.winfo_width()
-        height = self.winfo_height()
-        screen_width = self.winfo_screenwidth()
-        screen_height = self.winfo_screenheight()
-        x = int((screen_width - width) / 2)
-        y = int((screen_height - height) / 2)
-        self.geometry(f'+{x}+{y}')
+    def _init_ui(self):
+        layout = QVBoxLayout(self)
+        layout.setSpacing(12)
+        layout.setContentsMargins(16, 16, 16, 16)
 
-        # Main frame
-        main_frame = ctk.CTkFrame(self)
-        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        # 标题栏
+        header = QHBoxLayout()
+        header.addWidget(StrongBodyLabel("PPT文件时间管理"))
+        header.addStretch()
+        btn_clear = PushButton("一键清空")
+        btn_clear.setIcon(FIF.DELETE)
+        btn_clear.setStyleSheet("color: #e74c3c;")
+        btn_clear.clicked.connect(self._clear_all)
+        header.addWidget(btn_clear)
+        layout.addLayout(header)
 
-        # Header
-        header_frame = ctk.CTkFrame(main_frame, fg_color="transparent")
-        header_frame.pack(fill="x", pady=(10, 20))
-        ctk.CTkLabel(header_frame, text="PPT文件时间管理", font=("Microsoft YaHei UI", 18, "bold")).pack(side="left")
-        # Add clear all button to top right
-        ctk.CTkButton(header_frame, text="一键清空", width=100, fg_color="#FF5252", command=self._clear_all).pack(side="right", padx=5)
+        # PPT 列表（滚动区域）
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
 
-        # PPT list frame
-        list_frame = ctk.CTkFrame(main_frame)
-        list_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        self.list_container = QWidget()
+        self.list_layout = QVBoxLayout(self.list_container)
+        self.list_layout.setSpacing(6)
+        self.list_layout.setContentsMargins(0, 0, 0, 0)
+        self.list_layout.addStretch()
 
-        # Listbox to display PPT files
-        self.ppt_listbox = ctk.CTkScrollableFrame(list_frame)
-        self.ppt_listbox.pack(fill="both", expand=True)
+        scroll.setWidget(self.list_container)
+        layout.addWidget(scroll, 1)
 
-        # Add PPT section
-        add_frame = ctk.CTkFrame(main_frame)
-        add_frame.pack(fill="x", padx=10, pady=10)
+        # 添加区域
+        add_card = GroupHeaderCardWidget()
+        add_card.setTitle("添加PPT文件")
+        add_card.setBorderRadius(8)
 
-        ctk.CTkLabel(add_frame, text="添加PPT文件", font=("Microsoft YaHei UI", 14)).pack(pady=(0, 10))
+        file_row = QHBoxLayout()
+        file_row.addWidget(BodyLabel("文件路径"))
+        self.entry_file_path = LineEdit()
+        btn_browse = PushButton("浏览")
+        btn_browse.setIcon(FIF.FOLDER)
+        btn_browse.clicked.connect(self._browse_file)
+        file_row.addWidget(self.entry_file_path, 1)
+        file_row.addWidget(btn_browse)
+        add_card.addGroup(file_row)
 
-        file_frame = ctk.CTkFrame(add_frame, fg_color="transparent")
-        file_frame.pack(fill="x", pady=5)
+        time_row = QHBoxLayout()
+        time_row.addWidget(BodyLabel("时间(分钟)"))
+        self.spin_time = DoubleSpinBox()
+        self.spin_time.setRange(0.5, 999)
+        self.spin_time.setValue(10)
+        self.spin_time.setSuffix(" 分钟")
+        time_row.addWidget(self.spin_time)
+        btn_add = PrimaryPushButton("添加")
+        btn_add.clicked.connect(self._add_ppt)
+        time_row.addWidget(btn_add)
+        add_card.addGroup(time_row)
 
-        self.file_path_var = ctk.StringVar()
-        ctk.CTkEntry(file_frame, textvariable=self.file_path_var, width=400).pack(side="left", padx=5)
-        ctk.CTkButton(file_frame, text="浏览", width=80, command=self._browse_file).pack(side="left", padx=5)
+        layout.addWidget(add_card)
 
-        time_frame = ctk.CTkFrame(add_frame, fg_color="transparent")
-        time_frame.pack(fill="x", pady=5)
-
-        ctk.CTkLabel(time_frame, text="时间(分钟):", width=100).pack(side="left", padx=5)
-        self.time_var = ctk.StringVar(value="10")
-        ctk.CTkEntry(time_frame, textvariable=self.time_var, width=100).pack(side="left", padx=5)
-        ctk.CTkButton(time_frame, text="添加", width=80, height=30, command=self._add_ppt).pack(side="left", padx=5)
-
-
-
-        # Load PPT files
+        # 加载列表
         self._load_ppt_files()
 
     def _browse_file(self):
-        file_path = filedialog.askopenfilename(
-            title="选择PPT文件",
-            filetypes=[("PowerPoint文件", "*.pptx *.ppt"), ("WPS演示文件", "*.dps"), ("所有文件", "*.*")]
+        path, _ = QFileDialog.getOpenFileName(
+            self, "选择PPT文件", "",
+            "PowerPoint (*.pptx *.ppt);;WPS (*.dps);;All Files (*)"
         )
-        if file_path:
-            self.file_path_var.set(file_path)
+        if path:
+            self.entry_file_path.setText(path)
 
     def _add_ppt(self):
-        file_path = self.file_path_var.get()
-        try:
-            time = float(self.time_var.get())
-            if file_path and time > 0:
+        file_path = self.entry_file_path.text().strip()
+        time_val = self.spin_time.value()
+        if file_path and time_val > 0:
+            ppt_timers = cfg.get("ppt_timers")
+            ppt_timers[file_path] = time_val
+            cfg.set("ppt_timers", ppt_timers)
+            self._load_ppt_files()
+            self.entry_file_path.clear()
+            self.spin_time.setValue(10)
+
+    def _load_ppt_files(self):
+        # 清空列表
+        while self.list_layout.count() > 1:  # 保留 stretch
+            item = self.list_layout.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+        ppt_timers = cfg.get("ppt_timers")
+        if not ppt_timers:
+            empty_label = CaptionLabel("暂无PPT文件")
+            empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.list_layout.insertWidget(0, empty_label)
+            return
+
+        for file_path, time_min in ppt_timers.items():
+            file_name = os.path.basename(file_path)
+            card = CardWidget()
+            row = QHBoxLayout(card)
+            row.setContentsMargins(12, 8, 12, 8)
+
+            # 文件名
+            name_label = BodyLabel(file_name)
+            name_label.setMinimumWidth(250)
+            row.addWidget(name_label, 1)
+
+            # 时间
+            time_label = CaptionLabel(f"{time_min} 分钟")
+            time_label.setFixedWidth(80)
+            row.addWidget(time_label)
+
+            # 修改按钮
+            btn_edit = PushButton("修改")
+            btn_edit.setFixedWidth(60)
+            btn_edit.clicked.connect(lambda checked, p=file_path, t=time_min: self._edit_ppt(p, t))
+            row.addWidget(btn_edit)
+
+            # 删除按钮
+            btn_del = PushButton("删除")
+            btn_del.setFixedWidth(60)
+            btn_del.setStyleSheet("color: #e74c3c;")
+            btn_del.clicked.connect(lambda checked, p=file_path: self._delete_ppt(p))
+            row.addWidget(btn_del)
+
+            self.list_layout.insertWidget(self.list_layout.count() - 1, card)
+
+    def _edit_ppt(self, file_path, current_time):
+        dialog = QDialog(self)
+        dialog.setWindowTitle("修改PPT时间")
+        dialog.setFixedSize(300, 150)
+        dialog.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
+
+        dlayout = QVBoxLayout(dialog)
+        dlayout.setContentsMargins(20, 20, 20, 20)
+
+        dlayout.addWidget(BodyLabel("新时间(分钟):"))
+        spin = DoubleSpinBox()
+        spin.setRange(0.5, 999)
+        spin.setValue(current_time)
+        dlayout.addWidget(spin)
+
+        btn_row = QHBoxLayout()
+        btn_save = PrimaryPushButton("保存")
+        btn_cancel = PushButton("取消")
+        btn_row.addWidget(btn_save)
+        btn_row.addWidget(btn_cancel)
+        dlayout.addLayout(btn_row)
+
+        def do_save():
+            new_time = spin.value()
+            if new_time > 0:
                 ppt_timers = cfg.get("ppt_timers")
-                ppt_timers[file_path] = time
+                ppt_timers[file_path] = new_time
                 cfg.set("ppt_timers", ppt_timers)
                 self._load_ppt_files()
-                self.file_path_var.set("")
-                self.time_var.set("10")
-        except ValueError:
-            pass
+                dialog.accept()
 
-    def _edit_ppt(self):
-        selected_item = self._get_selected_item()
-        if selected_item:
-            file_path = selected_item["path"]
-            current_time = selected_item["time"]
-            self._edit_ppt_by_path(file_path, current_time)
+        btn_save.clicked.connect(do_save)
+        btn_cancel.clicked.connect(dialog.reject)
+        dialog.exec()
 
-    def _edit_ppt_by_path(self, file_path, current_time=None):
-        if not current_time:
-            ppt_timers = cfg.get("ppt_timers")
-            if file_path in ppt_timers:
-                current_time = ppt_timers[file_path]
-            else:
-                return
-        
-        # Create edit dialog
-        edit_dialog = ctk.CTkToplevel(self)
-        edit_dialog.title("修改PPT时间")
-        edit_dialog.geometry("300x150")
-        edit_dialog.attributes('-topmost', True)
-        
-        ctk.CTkLabel(edit_dialog, text="新时间(分钟):").pack(pady=10)
-        time_var = ctk.StringVar(value=str(current_time))
-        ctk.CTkEntry(edit_dialog, textvariable=time_var).pack(pady=10)
-        
-        def save_edit():
-            try:
-                new_time = float(time_var.get())
-                if new_time > 0:
-                    ppt_timers = cfg.get("ppt_timers")
-                    ppt_timers[file_path] = new_time
-                    cfg.set("ppt_timers", ppt_timers)
-                    self._load_ppt_files()
-                    edit_dialog.destroy()
-            except ValueError:
-                pass
-        
-        button_frame = ctk.CTkFrame(edit_dialog, fg_color="transparent")
-        button_frame.pack(pady=10)
-        ctk.CTkButton(button_frame, text="保存", command=save_edit).pack(side="left", padx=10)
-        ctk.CTkButton(button_frame, text="取消", command=edit_dialog.destroy).pack(side="left", padx=10)
-
-    def _delete_ppt(self):
-        selected_item = self._get_selected_item()
-        if selected_item:
-            file_path = selected_item["path"]
-            self._delete_ppt_by_path(file_path)
-
-    def _delete_ppt_by_path(self, file_path):
+    def _delete_ppt(self, file_path):
         ppt_timers = cfg.get("ppt_timers")
         if file_path in ppt_timers:
             del ppt_timers[file_path]
@@ -144,69 +193,7 @@ class PPTManagerWindow(ctk.CTkToplevel):
             self._load_ppt_files()
 
     def _clear_all(self):
-        # Confirm dialog
-        confirm_dialog = ctk.CTkToplevel(self)
-        confirm_dialog.title("确认清空")
-        confirm_dialog.geometry("300x150")
-        confirm_dialog.attributes('-topmost', True)
-        
-        ctk.CTkLabel(confirm_dialog, text="确定要清空所有PPT文件吗？").pack(pady=20)
-        
-        button_frame = ctk.CTkFrame(confirm_dialog, fg_color="transparent")
-        button_frame.pack(pady=10)
-        
-        def do_clear():
+        w = MessageBox("确认清空", "确定要清空所有PPT文件吗？", self)
+        if w.exec():
             cfg.set("ppt_timers", {})
             self._load_ppt_files()
-            confirm_dialog.destroy()
-        
-        ctk.CTkButton(button_frame, text="确定", command=do_clear).pack(side="left", padx=10)
-        ctk.CTkButton(button_frame, text="取消", command=confirm_dialog.destroy).pack(side="left", padx=10)
-
-    def _load_ppt_files(self):
-        # Clear existing items
-        for widget in self.ppt_listbox.winfo_children():
-            widget.destroy()
-        
-        ppt_timers = cfg.get("ppt_timers")
-        if not ppt_timers:
-            ctk.CTkLabel(self.ppt_listbox, text="暂无PPT文件", font=("Microsoft YaHei UI", 14)).pack(pady=20)
-            return
-        
-        # Create list items
-        for file_path, time in ppt_timers.items():
-            file_name = os.path.basename(file_path)
-            item_frame = ctk.CTkFrame(self.ppt_listbox, fg_color="transparent")
-            item_frame.pack(fill="x", pady=5, padx=5)
-            
-            ctk.CTkLabel(item_frame, text=file_name, width=300, anchor="w").pack(side="left", padx=5)
-            ctk.CTkLabel(item_frame, text=f"{time}分钟", width=100).pack(side="left", padx=5)
-            
-            # Add edit and delete buttons to each item
-            button_frame = ctk.CTkFrame(item_frame, fg_color="transparent")
-            button_frame.pack(side="right", padx=5)
-            
-            ctk.CTkButton(button_frame, text="修改", width=60, command=lambda path=file_path: self._edit_ppt_by_path(path)).pack(side="left", padx=2)
-            ctk.CTkButton(button_frame, text="删除", width=60, fg_color="#FF5252", command=lambda path=file_path: self._delete_ppt_by_path(path)).pack(side="left", padx=2)
-            
-            # Store file path as attribute for easy access
-            item_frame.file_path = file_path
-            item_frame.time = time
-
-    def _get_selected_item(self):
-        # Get the currently focused item
-        focused = self.ppt_listbox.focus_get()
-        if focused and hasattr(focused, "file_path"):
-            return {"path": focused.file_path, "time": focused.time}
-        
-        # Fallback: get the first child with file_path attribute
-        for widget in self.ppt_listbox.winfo_children():
-            if hasattr(widget, "file_path"):
-                return {"path": widget.file_path, "time": widget.time}
-        
-        return None
-
-    def _select_ppt(self, file_path):
-        # This method can be used to select a PPT file and close the window
-        # For now, just close the window
-        self.destroy()

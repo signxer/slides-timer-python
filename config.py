@@ -1,7 +1,16 @@
 import json
 import os
+import sys
 
-CONFIG_FILE = "config.json"
+
+def get_app_dir():
+    """获取应用根目录（兼容 PyInstaller 打包）"""
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+CONFIG_FILE = os.path.join(get_app_dir(), "config.json")
 
 DEFAULT_CONFIG = {
     "reminder_duration": 5,  # seconds (Legacy, kept for compat if needed, but we will use specific ones)

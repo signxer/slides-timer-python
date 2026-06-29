@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Slides Timer
+Name[zh_CN]=演讲计时助手
+Comment=Presentation timer tool
+Comment[zh_CN]=演示计时器工具，自动检测 PPT 放映并计时
+Exec=slides-timer
+Icon=slides-timer
+Terminal=false
+Type=Application
+Categories=Office;Utility;
+Keywords=ppt;timer;presentation;演示;计时;

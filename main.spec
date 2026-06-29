@@ -1,16 +1,26 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('ui', 'ui'), ('config.py', '.'), ('config.json', '.')],
-    hiddenimports=['cffi', 'miniaudio'],
+    datas=[
+        ('ui/assets', 'ui/assets'),
+        ('config.json', '.'),
+        ('didi.wav', '.'),
+        ('icon.png', '.'),
+    ],
+    hiddenimports=[
+        'PySide6.QtWidgets',
+        'PySide6.QtCore',
+        'PySide6.QtGui',
+        'PySide6.QtSvg',
+        'qfluentwidgets',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=[],
+    excludes=['tkinter', 'customtkinter'],
     noarchive=False,
     optimize=0,
 )
@@ -22,7 +32,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='main',
+    name='slides-timer',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -35,5 +45,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['icon.ico'],
+    icon=['icon.png'],
 )

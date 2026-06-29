@@ -1,0 +1,152 @@
+name: Build deb packages for Kylin v10
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g. 1.0.0)'
+        required: false
+        default: '1.0.0'
+
+env:
+  APP_NAME: slides-timer
+
+jobs:
+  build-amd64:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y xdotool dpkg-dev fakeroot
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller \
+            --onefile \
+            --name slides-timer \
+            --add-data "ui/assets:ui/assets" \
+            --add-data "config.json:." \
+            --add-data "didi.wav:." \
+            --add-data "icon.png:." \
+            --hidden-import PySide6.QtWidgets \
+            --hidden-import PySide6.QtCore \
+            --hidden-import PySide6.QtGui \
+            --hidden-import PySide6.QtSvg \
+            --hidden-import qfluentwidgets \
+            --exclude-module tkinter \
+            --exclude-module customtkinter \
+            main.py
+
+      - name: Build deb package
+        run: |
+          sed -i "s/VERSION=\"1.0.0\"/VERSION=\"${{ steps.version.outputs.version }}\"/" scripts/build-deb.sh
+          bash scripts/build-deb.sh amd64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-amd64
+          path: dist/*.deb
+
+  build-arm64:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Set up QEMU for arm64
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Build arm64 deb in container
+        uses: uraimo/run-on-arch-action@v3
+        with:
+          arch: aarch64
+          distro: ubuntu22.04
+          githubToken: ${{ github.token }}
+          install: |
+            apt-get update
+            apt-get install -y python3 python3-pip python3-venv xdotool dpkg-dev fakeroot
+          run: |
+            pip3 install -r requirements.txt
+            pip3 install pyinstaller
+            pyinstaller \
+              --onefile \
+              --name slides-timer \
+              --add-data "ui/assets:ui/assets" \
+              --add-data "config.json:." \
+              --add-data "didi.wav:." \
+              --add-data "icon.png:." \
+              --hidden-import PySide6.QtWidgets \
+              --hidden-import PySide6.QtCore \
+              --hidden-import PySide6.QtGui \
+              --hidden-import PySide6.QtSvg \
+              --hidden-import qfluentwidgets \
+              --exclude-module tkinter \
+              --exclude-module customtkinter \
+              main.py
+            sed -i "s/VERSION=\"1.0.0\"/VERSION=\"${{ steps.version.outputs.version }}\"/" scripts/build-deb.sh
+            bash scripts/build-deb.sh arm64
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-arm64
+          path: dist/*.deb
+
+  release:
+    needs: [build-amd64, build-arm64]
+    runs-on: ubuntu-22.04
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List artifacts
+        run: find artifacts -type f -name "*.deb" | sort
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/**/*.deb
+          generate_release_notes: true
+          draft: false
+          prerelease: false
