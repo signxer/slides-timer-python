@@ -1,0 +1,27 @@
+{
+    "reminder_duration": 10,
+    "duration_warning": 5,
+    "duration_critical": 5,
+    "sound_warning_enabled": false,
+    "sound_warning_path": "C:/Users/signx/Desktop/slides_timer_python/didi.wav",
+    "sound_critical_enabled": true,
+    "sound_critical_path": "C:/Users/signx/Desktop/slides_timer_python/didi.wav",
+    "warning_trigger_type": "percent",
+    "warning_trigger_value": 33,
+    "font_family": "Microsoft YaHei UI",
+    "font_size": 48,
+    "text_color": "#FFFFFF",
+    "bg_color_warning": "#FFA500",
+    "bg_color_critical": "#FF0000",
+    "text_warning": "\u4e25\u63a7\u4f1a\u8bae\u65f6\u957f  \u5269\u4f591/3\u65f6\u95f4",
+    "text_critical": "\u4e25\u63a7\u4f1a\u8bae\u65f6\u957f  \u65f6\u95f4\u5230",
+    "position": "top",
+    "opacity": 0.9,
+    "offset_x": 0,
+    "offset_y": 0,
+    "screen_width": 0,
+    "screen_height": 0,
+    "ppt_timers": {
+        "C:/Users/signx/Desktop/1m.pptx": 1.0
+    }
+}
