@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFontDatabase
 from qfluentwidgets import (
-    TabView, CardWidget, GroupHeaderCardWidget,
+    TabWidget, CardWidget, GroupHeaderCardWidget,
     LineEdit, SpinBox, DoubleSpinBox, ComboBox, SwitchButton,
     PushButton, PrimaryPushButton, ColorPickerButton,
     BodyLabel, StrongBodyLabel, CaptionLabel,
@@ -35,7 +35,7 @@ class SettingsWindow(QWidget):
         main_layout.setContentsMargins(12, 12, 12, 12)
 
         # TabView
-        self.tab_view = TabView(self)
+        self.tab_view = TabWidget(self)
 
         # Tab 1: 提醒设置
         self.tab_reminder = QWidget()
