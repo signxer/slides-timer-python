@@ -2,8 +2,9 @@
 set -e
 
 # 用法: ./build-deb.sh [amd64|arm64]
+# 环境变量: VERSION (可选, 默认 1.0.0)
 ARCH=${1:-amd64}
-VERSION="1.0.0"
+VERSION="${VERSION:-1.0.0}"
 APP_NAME="slides-timer"
 PKG_DIR="dist/${APP_NAME}_${VERSION}_${ARCH}"
 

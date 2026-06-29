@@ -1,34 +1,66 @@
-name: Build deb packages for Kylin v10
+name: Build & Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version number (e.g. 1.0.0)'
-        required: false
-        default: '1.0.0'
 
 env:
   APP_NAME: slides-timer
 
 jobs:
+  # ────────────────────────────────────────────────────────────
+  # Windows exe
+  # ────────────────────────────────────────────────────────────
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller `
+            --onefile `
+            --name slides-timer `
+            --add-data "ui/assets;ui/assets" `
+            --add-data "config.json;." `
+            --add-data "didi.wav;." `
+            --add-data "icon.png;." `
+            --add-data "icon.ico;." `
+            --hidden-import PySide6.QtWidgets `
+            --hidden-import PySide6.QtCore `
+            --hidden-import PySide6.QtGui `
+            --hidden-import PySide6.QtSvg `
+            --hidden-import qfluentwidgets `
+            --exclude-module tkinter `
+            --exclude-module customtkinter `
+            --icon icon.ico `
+            main.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-exe
+          path: dist/slides-timer.exe
+
+  # ────────────────────────────────────────────────────────────
+  # Linux deb — amd64
+  # ────────────────────────────────────────────────────────────
   build-amd64:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-
-      - name: Extract version from tag
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            VERSION="${GITHUB_REF#refs/tags/v}"
-          else
-            VERSION="${{ github.event.inputs.version }}"
-          fi
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -63,8 +95,8 @@ jobs:
 
       - name: Build deb package
         run: |
-          sed -i "s/VERSION=\"1.0.0\"/VERSION=\"${{ steps.version.outputs.version }}\"/" scripts/build-deb.sh
-          bash scripts/build-deb.sh amd64
+          VERSION="1.0.0-${{ github.run_number }}-$(echo ${{ github.sha }} | cut -c1-8)"
+          VERSION="${VERSION}" bash scripts/build-deb.sh amd64
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -72,20 +104,13 @@ jobs:
           name: deb-amd64
           path: dist/*.deb
 
+  # ────────────────────────────────────────────────────────────
+  # Linux deb — arm64
+  # ────────────────────────────────────────────────────────────
   build-arm64:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-
-      - name: Extract version from tag
-        id: version
-        run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
-            VERSION="${GITHUB_REF#refs/tags/v}"
-          else
-            VERSION="${{ github.event.inputs.version }}"
-          fi
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU for arm64
         uses: docker/setup-qemu-action@v3
@@ -119,8 +144,8 @@ jobs:
               --exclude-module tkinter \
               --exclude-module customtkinter \
               main.py
-            sed -i "s/VERSION=\"1.0.0\"/VERSION=\"${{ steps.version.outputs.version }}\"/" scripts/build-deb.sh
-            bash scripts/build-deb.sh arm64
+            VERSION="1.0.0-${{ github.run_number }}-$(echo ${{ github.sha }} | cut -c1-8)" \
+              bash scripts/build-deb.sh arm64
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -128,10 +153,12 @@ jobs:
           name: deb-arm64
           path: dist/*.deb
 
+  # ────────────────────────────────────────────────────────────
+  # Release
+  # ────────────────────────────────────────────────────────────
   release:
-    needs: [build-amd64, build-arm64]
+    needs: [build-windows, build-amd64, build-arm64]
     runs-on: ubuntu-22.04
-    if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
     steps:
@@ -140,13 +167,41 @@ jobs:
         with:
           path: artifacts
 
-      - name: List artifacts
-        run: find artifacts -type f -name "*.deb" | sort
+      - name: Generate version
+        id: ver
+        run: |
+          SHORT_SHA="$(echo ${{ github.sha }} | cut -c1-8)"
+          VERSION="1.0.0-${{ github.run_number }}-${SHORT_SHA}"
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+
+      - name: List release files
+        run: find artifacts -type f | sort
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/**/*.deb
-          generate_release_notes: true
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: "Slides Timer ${{ steps.ver.outputs.version }}"
+          body: |
+            ## Slides Timer ${{ steps.ver.outputs.version }}
+
+            **Commit:** `${{ github.sha }}`
+
+            ### Downloads
+            | Platform | File |
+            |----------|------|
+            | Windows (x64) | `slides-timer.exe` |
+            | Linux (amd64) | `slides-timer_*_amd64.deb` |
+            | Linux (arm64) | `slides-timer_*_arm64.deb` |
+
+            ### Linux 安装
+            ```bash
+            sudo dpkg -i slides-timer_*_amd64.deb
+            sudo apt-get install -f
+            ```
+          files: |
+            artifacts/**/*.exe
+            artifacts/**/*.deb
           draft: false
           prerelease: false
