@@ -81,6 +81,7 @@ jobs:
             --hidden-import PySide6.QtGui `
             --hidden-import PySide6.QtSvg `
             --hidden-import qfluentwidgets `
+            --hidden-import win32com.client `
             --exclude-module tkinter `
             --exclude-module customtkinter `
             --icon icon.ico `
