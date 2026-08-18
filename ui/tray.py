@@ -12,9 +12,8 @@ from qfluentwidgets import SystemTrayMenu, FluentIcon as FIF
 class SystemTray(QSystemTrayIcon):
     """系统托盘图标"""
 
-    def __init__(self, on_settings, on_exit, parent=None):
+    def __init__(self, on_exit, parent=None):
         super().__init__(parent)
-        self.on_settings = on_settings
         self.on_exit = on_exit
         self.on_show_window = None
         self.on_start_timer = None
@@ -48,12 +47,6 @@ class SystemTray(QSystemTrayIcon):
 
         menu.addSeparator()
 
-        settings_action = QAction(FIF.SETTING.icon(), "设置")
-        settings_action.triggered.connect(self._on_settings_clicked)
-        menu.addAction(settings_action)
-
-        menu.addSeparator()
-
         exit_action = QAction(FIF.CLOSE.icon(), "退出")
         exit_action.triggered.connect(self._on_exit_clicked)
         menu.addAction(exit_action)
@@ -71,9 +64,6 @@ class SystemTray(QSystemTrayIcon):
     def _on_start_timer(self):
         if self.on_start_timer:
             self.on_start_timer()
-
-    def _on_settings_clicked(self):
-        self.on_settings()
 
     def _on_exit_clicked(self):
         self.on_exit()

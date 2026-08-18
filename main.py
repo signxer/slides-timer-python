@@ -70,7 +70,7 @@ class SlidesTimerApp(QObject):
         self.main_window = None
 
         # 托盘
-        self.tray = SystemTray(self.on_tray_settings, self.on_exit)
+        self.tray = SystemTray(self.on_exit)
         self.tray.on_show_window = self._show_main_window
         self.tray.on_start_timer = self.on_tray_start
         self.tray.show()
