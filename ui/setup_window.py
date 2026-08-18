@@ -3,14 +3,13 @@
 """
 计时设置窗口 — 现代 Fluent 风格。
 
-Silent-rain 风格参考：HeaderCardWidget + StrongBodyLabel 标题 + SpinBox + 快速选择按钮。
 弹出式窗口，选择时长后回调 start_timer。
 """
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
 from PySide6.QtCore import Qt
 from qfluentwidgets import (
     PrimaryPushButton, PushButton, SpinBox, HeaderCardWidget,
-    StrongBodyLabel, BodyLabel, CaptionLabel,
+    StrongBodyLabel, BodyLabel,
     FluentIcon as FIF,
 )
 
@@ -26,19 +25,18 @@ class SetupWindow(QWidget):
 
     def _init_ui(self):
         self.setWindowTitle("设置演讲倒计时")
-        self.setFixedSize(400, 320)
+        self.setFixedSize(480, 400)
         self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Dialog)
 
         layout = QVBoxLayout(self)
         layout.setSpacing(16)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setAlignment(Qt.AlignTop)
+        layout.setContentsMargins(28, 28, 28, 28)
 
         # 卡片
         card = HeaderCardWidget(self)
         card.setTitle("演讲时长")
         card.setBorderRadius(10)
-        card.viewLayout.setContentsMargins(24, 8, 24, 20)
+        card.viewLayout.setContentsMargins(24, 8, 24, 24)
 
         card_layout = QVBoxLayout()
         card_layout.setSpacing(16)
@@ -46,19 +44,20 @@ class SetupWindow(QWidget):
 
         # 时间输入区
         input_row = QHBoxLayout()
-        input_row.setSpacing(10)
+        input_row.setSpacing(12)
 
         btn_minus = PushButton("−")
-        btn_minus.setFixedSize(44, 40)
+        btn_minus.setFixedSize(50, 44)
         btn_minus.clicked.connect(lambda: self._adjust_time(-1))
 
         self.time_spinbox = SpinBox()
         self.time_spinbox.setRange(1, 999)
         self.time_spinbox.setValue(10)
-        self.time_spinbox.setFixedSize(130, 40)
+        self.time_spinbox.setFixedWidth(160)
+        self.time_spinbox.setFixedHeight(44)
 
         btn_plus = PushButton("+")
-        btn_plus.setFixedSize(44, 40)
+        btn_plus.setFixedSize(50, 44)
         btn_plus.clicked.connect(lambda: self._adjust_time(1))
 
         input_row.addStretch()
@@ -69,7 +68,6 @@ class SetupWindow(QWidget):
         card_layout.addLayout(input_row)
 
         card.viewLayout.addLayout(card_layout)
-
         layout.addWidget(card)
 
         # 快速选择区
@@ -80,7 +78,7 @@ class SetupWindow(QWidget):
         quick_row.setSpacing(8)
         for m in [5, 10, 15, 20, 30]:
             btn = PushButton(f"{m} 分钟")
-            btn.setFixedHeight(36)
+            btn.setFixedHeight(38)
             btn.clicked.connect(lambda checked, t=m: self.time_spinbox.setValue(t))
             quick_row.addWidget(btn)
         layout.addLayout(quick_row)
@@ -93,12 +91,6 @@ class SetupWindow(QWidget):
         btn_start.setFixedHeight(48)
         btn_start.clicked.connect(self._on_start_click)
         layout.addWidget(btn_start)
-
-        # 设置按钮（小）
-        btn_settings = PushButton("  设置")
-        btn_settings.setIcon(FIF.SETTING)
-        btn_settings.clicked.connect(self.on_settings)
-        layout.addWidget(btn_settings)
 
     def _adjust_time(self, delta):
         val = self.time_spinbox.value() + delta
