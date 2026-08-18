@@ -3,11 +3,11 @@
 """
 设置窗口 — 现代 Fluent 卡片布局。
 
-分为三个 Tab 页：
+分为两个 Tab 页：
   1. 提醒设置（触发条件、声音、提示语）
   2. 外观与位置（字体、颜色、偏移、分辨率）
-  3. PPT 文件管理（内嵌 PPTManagerWindow）
 
+PPT 文件管理已移至主窗口导航栏独立页面，避免重复。
 使用 SimpleCardWidget + 手动 QVBoxLayout 代替 GroupHeaderCardWidget.addGroup，
 避免版本间 API 不兼容（addGroup 签名在 1.11.x 中变化）。
 """
@@ -24,7 +24,6 @@ from qfluentwidgets import (
     BodyLabel, StrongBodyLabel, CaptionLabel,
     FluentIcon as FIF, InfoBar, InfoBarPosition,
 )
-from ui.ppt_manager_window import PPTManagerWindow
 
 
 class SettingsWindow(QWidget):
@@ -54,9 +53,6 @@ class SettingsWindow(QWidget):
         self.tab_appearance = QWidget()
         self._build_appearance_tab()
         self.tab_view.addTab(self.tab_appearance, "外观与位置")
-        self.tab_ppt = QWidget()
-        self._build_ppt_tab()
-        self.tab_view.addTab(self.tab_ppt, "PPT文件管理")
         self.tab_view.setCurrentIndex(0)
         main_layout.addWidget(self.tab_view, 1)
         if not self.embed:
@@ -223,14 +219,6 @@ class SettingsWindow(QWidget):
         tab_layout = QVBoxLayout(self.tab_appearance)
         tab_layout.setContentsMargins(0, 0, 0, 0)
         tab_layout.addWidget(scroll)
-
-    def _build_ppt_tab(self):
-        layout = QVBoxLayout(self.tab_ppt); layout.setSpacing(12)
-        layout.setContentsMargins(8, 8, 8, 8)
-        desc = BodyLabel("管理 PPT 文件的预设时间，检测到放映时自动开始计时。")
-        desc.setStyleSheet("color: #888;"); layout.addWidget(desc)
-        self._inner_ppt = PPTManagerWindow(embed=True)
-        layout.addWidget(self._inner_ppt, 1)
 
     def _browse_file(self, entry):
         path, _ = QFileDialog.getOpenFileName(self, "选择声音文件", "", "Sound Files (*.wav *.mp3);;All Files (*)")
