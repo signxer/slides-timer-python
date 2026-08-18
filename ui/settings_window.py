@@ -20,9 +20,9 @@ from PySide6.QtGui import QFontDatabase
 from qfluentwidgets import (
     SimpleCardWidget,
     LineEdit, SpinBox, ComboBox, SwitchButton,
-    PushButton, PrimaryPushButton, ColorPickerButton,
+    PushButton, ColorPickerButton,
     BodyLabel, StrongBodyLabel, CaptionLabel,
-    FluentIcon as FIF, InfoBar, InfoBarPosition,
+    FluentIcon as FIF,
 )
 
 
@@ -219,17 +219,31 @@ class SettingsWindow(QWidget):
         scroll.setWidget(content)
         main_layout.addWidget(scroll, 1)
 
-        # 底部按钮
-        if not self.embed:
-            bottom_bar = QWidget()
-            bottom_layout = QHBoxLayout(bottom_bar)
-            bottom_layout.setContentsMargins(0, 8, 0, 0)
-            btn_save = PrimaryPushButton("保存并关闭")
-            btn_save.setIcon(FIF.SAVE)
-            btn_save.clicked.connect(self.save)
-            bottom_layout.addStretch()
-            bottom_layout.addWidget(btn_save)
-            main_layout.addWidget(bottom_bar)
+        # 自动保存：每个控件变化时立即保存
+        self._auto_save()
+
+    def _auto_save(self):
+        """为所有控件绑定变化信号，修改后立即保存"""
+        self.entry_text_warning.textChanged.connect(self.save)
+        self.spin_duration_warning.valueChanged.connect(self.save)
+        self.combo_trigger_type.currentIndexChanged.connect(self.save)
+        self.spin_trigger_value.valueChanged.connect(self.save)
+        self.switch_sound_warning.checkedChanged.connect(self.save)
+        self.entry_sound_warning.textChanged.connect(self.save)
+        self.entry_text_critical.textChanged.connect(self.save)
+        self.spin_duration_critical.valueChanged.connect(self.save)
+        self.switch_sound_critical.checkedChanged.connect(self.save)
+        self.entry_sound_critical.textChanged.connect(self.save)
+        self.spin_offset_x.valueChanged.connect(self.save)
+        self.spin_offset_y.valueChanged.connect(self.save)
+        self.spin_screen_width.valueChanged.connect(self.save)
+        self.spin_screen_height.valueChanged.connect(self.save)
+        self.spin_font_size.valueChanged.connect(self.save)
+        self.combo_font_family.currentIndexChanged.connect(self.save)
+        self.btn_text_color.colorChanged.connect(self.save)
+        self.btn_bg_color_warning.colorChanged.connect(self.save)
+        self.btn_bg_color_critical.colorChanged.connect(self.save)
+        self.combo_position.currentIndexChanged.connect(self.save)
 
     def _browse_file(self, entry):
         path, _ = QFileDialog.getOpenFileName(self, "选择声音文件", "", "Sound Files (*.wav *.mp3);;All Files (*)")
@@ -259,7 +273,5 @@ class SettingsWindow(QWidget):
             self.cfg.set("text_color", self.btn_text_color.color().name())
             self.cfg.set("bg_color_warning", self.btn_bg_color_warning.color().name())
             self.cfg.set("bg_color_critical", self.btn_bg_color_critical.color().name())
-            if not self.embed: self.close()
-            InfoBar.success("已保存", "设置已保存成功", parent=self, position=InfoBarPosition.TOP, duration=2000)
         except Exception as e:
-            InfoBar.error("保存失败", f"保存设置时出错: {e}", parent=self, position=InfoBarPosition.TOP, duration=3000)
+            print(f"Auto-save error: {e}")

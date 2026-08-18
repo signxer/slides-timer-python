@@ -101,19 +101,14 @@ class PPTManagerWindow(QWidget):
         btn_add.setIcon(FIF.ADD)
         btn_add.clicked.connect(self._add_ppt)
         time_row.addWidget(btn_add)
+        btn_clear = PushButton("一键清空")
+        btn_clear.setIcon(FIF.DELETE)
+        btn_clear.clicked.connect(self._clear_all)
+        time_row.addWidget(btn_clear)
         time_row.addStretch()
         acl.addWidget(time_widget)
 
         layout.addWidget(add_card)
-
-        # 一键清空（右下角）
-        clear_row = QHBoxLayout()
-        clear_row.addStretch()
-        btn_clear = PushButton("一键清空")
-        btn_clear.setIcon(FIF.DELETE)
-        btn_clear.clicked.connect(self._clear_all)
-        clear_row.addWidget(btn_clear)
-        layout.addLayout(clear_row)
         self._load_ppt_files()
 
     def _browse_file(self):
