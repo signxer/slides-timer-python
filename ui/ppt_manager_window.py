@@ -42,16 +42,15 @@ class PPTManagerWindow(QWidget):
             0 if self.embed else 16
         )
 
-        if not self.embed:
-            header = QHBoxLayout()
-            header.addWidget(StrongBodyLabel("PPT文件时间管理"))
-            header.addStretch()
-            btn_clear = PushButton("一键清空")
-            btn_clear.setIcon(FIF.DELETE)
-            btn_clear.setStyleSheet("color: #e74c3c;")
-            btn_clear.clicked.connect(self._clear_all)
-            header.addWidget(btn_clear)
-            layout.addLayout(header)
+        # 标题栏 + 一键清空（所有模式都显示）
+        header = QHBoxLayout()
+        header.addWidget(StrongBodyLabel("PPT文件时间管理"))
+        header.addStretch()
+        btn_clear = PushButton("一键清空")
+        btn_clear.setIcon(FIF.DELETE)
+        btn_clear.clicked.connect(self._clear_all)
+        header.addWidget(btn_clear)
+        layout.addLayout(header)
 
         # PPT 列表
         scroll = QScrollArea()
