@@ -16,8 +16,13 @@ from ui.setup_window import SetupWindow
 from ui.settings_window import SettingsWindow
 from ui.resume_dialog import ResumeDialog
 
-# 调试日志
-LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "slides_timer_debug.log")
+# 调试日志 — 写在 exe 所在目录（源码运行则写在项目根目录）
+def _get_log_dir():
+    if getattr(sys, 'frozen', False):
+        return os.path.dirname(sys.executable)
+    return os.path.dirname(os.path.abspath(__file__))
+
+LOG_FILE = os.path.join(_get_log_dir(), "slides_timer_debug.log")
 logging.basicConfig(
     filename=LOG_FILE,
     level=logging.DEBUG,
