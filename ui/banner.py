@@ -1,10 +1,18 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+浮动横幅覆盖窗口 — 保留原闪烁/淡入功能。
+
+保持与 silent-rain BannerOverlay 相似的风格但保留原有的闪烁逻辑，
+因为这是幻灯片计时器的核心视觉提醒方式（InfoBar 不能在全屏放映上显示）。
+"""
 from PySide6.QtWidgets import QWidget, QLabel, QGraphicsOpacityEffect, QApplication
 from PySide6.QtCore import Qt, QPropertyAnimation, QTimer, QEasingCurve
 from PySide6.QtGui import QFont
 
 
-class BannerWindow(QWidget):
-    """浮动横幅提示窗口"""
+class BannerOverlay(QWidget):
+    """浮动横幅覆盖层 — 在所有窗口之上闪烁显示警告/倒计时到。"""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -47,7 +55,7 @@ class BannerWindow(QWidget):
                      font_family="Noto Sans CJK SC", position="top",
                      duration=5, offset_x=0, offset_y=0,
                      manual_width=0, manual_height=0):
-        """显示横幅消息"""
+        """显示浮动横幅消息"""
         # 停止之前的动画
         self._flash_timer.stop()
         self._stop_timer.stop()
@@ -62,7 +70,7 @@ class BannerWindow(QWidget):
         self.label.setFont(font)
         self.label.setText(message)
 
-        # 设置样式
+        # 样式
         self.label.setStyleSheet(f"""
             QLabel {{
                 color: {text_color};
@@ -100,14 +108,15 @@ class BannerWindow(QWidget):
         self.setGeometry(x, y, w, h)
         self.label.setGeometry(0, 0, w, h)
         self.show()
+        self.raise_()
 
-        # 淡入动画
+        # 淡入
         self._fade_anim.setStartValue(0.0)
         self._fade_anim.setEndValue(1.0)
         self._fade_anim.setEasingCurve(QEasingCurve.Type.OutCubic)
         self._fade_anim.start()
 
-        # 启动闪烁（淡入完成后）
+        # 闪烁（淡入完成后）
         QTimer.singleShot(350, self._start_flash)
 
         # 自动关闭

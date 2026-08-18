@@ -3,7 +3,7 @@
 """
 slides-timer GUI 冒烟测试（Qt offscreen）。
 
-验证 BannerWindow 的创建/显示/淡入淡出、SetupWindow 时间选择、
+验证 BannerOverlay 的创建/显示/淡入淡出、SetupWindow 时间选择、
 SettingsWindow 的 UI 组件存在性。
 
 运行：
@@ -23,7 +23,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QTimer
 
 from config import cfg
-from ui.banner import BannerWindow
+from ui.banner import BannerOverlay
 from ui.setup_window import SetupWindow
 
 
@@ -33,7 +33,7 @@ class GuiSmoke(unittest.TestCase):
         cls.qapp = QApplication.instance() or QApplication([])
 
     def test_banner_create_and_show(self):
-        banner = BannerWindow()
+        banner = BannerOverlay()
         self.addCleanup(banner.deleteLater)
         banner.show_message(
             message="测试横幅",
@@ -54,7 +54,7 @@ class GuiSmoke(unittest.TestCase):
         banner.hide()
 
     def test_setup_window_components(self):
-        win = SetupWindow(None, self._dummy_start, self._dummy_settings)
+        win = SetupWindow(self._dummy_start, self._dummy_settings)
         self.addCleanup(win.deleteLater)
         win.show()
         self._pump_events(0.2)
@@ -62,7 +62,7 @@ class GuiSmoke(unittest.TestCase):
         self.assertEqual(win.time_spinbox.value(), 10, "默认时间应为10分钟")
 
     def test_setup_window_adjust_time(self):
-        win = SetupWindow(None, self._dummy_start, self._dummy_settings)
+        win = SetupWindow(self._dummy_start, self._dummy_settings)
         self.addCleanup(win.deleteLater)
         win._adjust_time(5)
         self.assertEqual(win.time_spinbox.value(), 15)
