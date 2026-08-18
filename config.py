@@ -35,7 +35,8 @@ DEFAULT_CONFIG = {
     "offset_y": 0,
     "screen_width": 0, # 0 means auto
     "screen_height": 0, # 0 means auto
-    "ppt_timers": {} # PPT文件路径 -> 时间(分钟)
+    "ppt_timers": {}, # PPT文件路径 -> 时间(分钟)
+    "ignored_ppts": [] # 不计时的PPT文件路径列表
 }
 
 class ConfigManager:

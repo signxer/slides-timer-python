@@ -3,7 +3,6 @@
 """
 PPT 文件时间管理窗口 — 现代 Fluent 风格。
 
-Silent-rain 风格参考：HeaderCardWidget + 卡片列表 + CaptionLabel + BodyLabel。
 可独立弹出或内嵌到 MSFluentWindow。
 """
 import os
@@ -14,9 +13,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 from qfluentwidgets import (
     SimpleCardWidget, CardWidget, HeaderCardWidget,
-    LineEdit, DoubleSpinBox, PushButton, PrimaryPushButton,
+    LineEdit, DoubleSpinBox, SpinBox, PushButton, PrimaryPushButton,
     BodyLabel, StrongBodyLabel, CaptionLabel,
-    FluentIcon as FIF, MessageBox
+    FluentIcon as FIF, MessageBox, SwitchButton,
 )
 from config import cfg
 
@@ -29,17 +28,21 @@ class PPTManagerWindow(QWidget):
         self.embed = embed
         if not embed:
             self.setWindowTitle("PPT文件时间管理")
-            self.resize(660, 500)
+            self.resize(720, 520)
             self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Dialog)
         self._init_ui()
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
         layout.setSpacing(12)
-        layout.setContentsMargins(0 if self.embed else 16, 0 if self.embed else 16, 0 if self.embed else 16, 0 if self.embed else 16)
+        layout.setContentsMargins(
+            0 if self.embed else 16,
+            0 if self.embed else 16,
+            0 if self.embed else 16,
+            0 if self.embed else 16
+        )
 
         if not self.embed:
-            # 标题栏
             header = QHBoxLayout()
             header.addWidget(StrongBodyLabel("PPT文件时间管理"))
             header.addStretch()
@@ -50,7 +53,7 @@ class PPTManagerWindow(QWidget):
             header.addWidget(btn_clear)
             layout.addLayout(header)
 
-        # PPT 列表（滚动区域）
+        # PPT 列表
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
@@ -64,7 +67,7 @@ class PPTManagerWindow(QWidget):
         scroll.setWidget(self.list_container)
         layout.addWidget(scroll, 1)
 
-        # 添加区域：卡片（用 SimpleCardWidget 避免 GroupHeaderCardWidget.addGroup 版本兼容问题）
+        # 添加区域
         add_card = SimpleCardWidget()
         add_card.setBorderRadius(10)
         acl = QVBoxLayout(add_card)
@@ -72,7 +75,6 @@ class PPTManagerWindow(QWidget):
         acl.setSpacing(12)
         acl.addWidget(StrongBodyLabel("添加PPT文件"))
 
-        # 文件路径行
         file_widget = QWidget()
         file_row = QHBoxLayout(file_widget)
         file_row.setContentsMargins(0, 0, 0, 0)
@@ -87,7 +89,6 @@ class PPTManagerWindow(QWidget):
         file_row.addWidget(btn_browse)
         acl.addWidget(file_widget)
 
-        # 时间行
         time_widget = QWidget()
         time_row = QHBoxLayout(time_widget)
         time_row.setContentsMargins(0, 0, 0, 0)
@@ -106,8 +107,6 @@ class PPTManagerWindow(QWidget):
         acl.addWidget(time_widget)
 
         layout.addWidget(add_card)
-
-        # 加载列表
         self._load_ppt_files()
 
     def _browse_file(self):
@@ -130,7 +129,6 @@ class PPTManagerWindow(QWidget):
             self.spin_time.setValue(10)
 
     def _load_ppt_files(self):
-        # 清空列表（保留 stretch）
         while self.list_layout.count() > 1:
             item = self.list_layout.takeAt(0)
             widget = item.widget()
@@ -138,6 +136,8 @@ class PPTManagerWindow(QWidget):
                 widget.deleteLater()
 
         ppt_timers = cfg.get("ppt_timers")
+        ignored = set(cfg.get("ignored_ppts") or [])
+
         if not ppt_timers:
             empty_label = CaptionLabel("暂无PPT文件，请添加。")
             empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -147,6 +147,8 @@ class PPTManagerWindow(QWidget):
 
         for file_path, time_min in ppt_timers.items():
             file_name = os.path.basename(file_path)
+            is_ignored = file_path in ignored
+
             card = SimpleCardWidget()
             card.setBorderRadius(8)
             row = QHBoxLayout(card)
@@ -155,13 +157,30 @@ class PPTManagerWindow(QWidget):
 
             # 文件名
             name_label = BodyLabel(file_name)
-            name_label.setMinimumWidth(200)
+            name_label.setMinimumWidth(180)
+            if is_ignored:
+                name_label.setStyleSheet("color: #888; text-decoration: line-through;")
             row.addWidget(name_label, 1)
 
-            # 时间
-            time_label = CaptionLabel(f"{time_min} 分钟")
-            time_label.setFixedWidth(80)
+            # 时间/状态
+            if is_ignored:
+                time_label = CaptionLabel("不计时")
+                time_label.setFixedWidth(70)
+                time_label.setStyleSheet("color: #ca5010;")
+            else:
+                time_label = CaptionLabel(f"{time_min} 分钟")
+                time_label.setFixedWidth(70)
             row.addWidget(time_label)
+
+            # 不计时开关
+            switch_ignore = SwitchButton()
+            switch_ignore.setChecked(is_ignored)
+            switch_ignore.setOnText("不计时")
+            switch_ignore.setOffText("计时")
+            switch_ignore.checkedChanged.connect(
+                lambda checked, p=file_path: self._toggle_ignore(p, checked)
+            )
+            row.addWidget(switch_ignore)
 
             # 修改按钮
             btn_edit = PushButton("修改")
@@ -178,15 +197,24 @@ class PPTManagerWindow(QWidget):
 
             self.list_layout.insertWidget(self.list_layout.count() - 1, card)
 
+    def _toggle_ignore(self, file_path, ignored):
+        ignored_list = set(cfg.get("ignored_ppts") or [])
+        if ignored:
+            ignored_list.add(file_path)
+        else:
+            ignored_list.discard(file_path)
+        cfg.set("ignored_ppts", sorted(ignored_list))
+        self._load_ppt_files()
+
     def _edit_ppt(self, file_path, current_time):
         dialog = QDialog(self)
         dialog.setWindowTitle("修改PPT时间")
-        dialog.setFixedSize(300, 150)
+        dialog.setFixedSize(320, 180)
         dialog.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
 
         dlayout = QVBoxLayout(dialog)
-        dlayout.setContentsMargins(20, 20, 20, 20)
-        dlayout.setSpacing(12)
+        dlayout.setContentsMargins(24, 24, 24, 24)
+        dlayout.setSpacing(16)
 
         dlayout.addWidget(BodyLabel("新时间(分钟):"))
         spin = DoubleSpinBox()
@@ -195,7 +223,7 @@ class PPTManagerWindow(QWidget):
         dlayout.addWidget(spin)
 
         btn_row = QHBoxLayout()
-        btn_row.setSpacing(8)
+        btn_row.setSpacing(12)
         btn_save = PrimaryPushButton("保存")
         btn_cancel = PushButton("取消")
         btn_row.addWidget(btn_save)
@@ -220,10 +248,16 @@ class PPTManagerWindow(QWidget):
         if file_path in ppt_timers:
             del ppt_timers[file_path]
             cfg.set("ppt_timers", ppt_timers)
+            # 同时清理 ignored 列表
+            ignored = list(cfg.get("ignored_ppts") or [])
+            if file_path in ignored:
+                ignored.remove(file_path)
+                cfg.set("ignored_ppts", ignored)
             self._load_ppt_files()
 
     def _clear_all(self):
         w = MessageBox("确认清空", "确定要清空所有PPT文件吗？", self)
         if w.exec():
             cfg.set("ppt_timers", {})
+            cfg.set("ignored_ppts", [])
             self._load_ppt_files()

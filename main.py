@@ -187,11 +187,21 @@ class SlidesTimerApp(QObject):
     def _start_new_session(self, ppt_path=None):
         print(f"Starting new session. PPT: {ppt_path}")
         if ppt_path:
+            # 检查是否在忽略列表
+            ignored = set(cfg.get("ignored_ppts") or [])
+            if ppt_path in ignored:
+                print(f"PPT is in ignored list, skipping timer")
+                return
+
             ppt_timers = cfg.get("ppt_timers")
             normalized_ppt_path = ppt_path.replace("\\", "/").lower()
             for stored_path, time_min in ppt_timers.items():
                 normalized_stored_path = stored_path.replace("\\", "/").lower()
                 if normalized_ppt_path == normalized_stored_path:
+                    # 再次检查忽略（用存储路径）
+                    if stored_path in ignored:
+                        print(f"PPT is in ignored list, skipping timer")
+                        return
                     print(f"Found preset time for PPT: {time_min} minutes")
                     self.start_timer(time_min, show_notification=True)
                     return
