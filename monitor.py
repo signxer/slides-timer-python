@@ -21,7 +21,8 @@ class SlideShowMonitor(QObject):
         "正在放映", "全屏",
     ]
 
-    def __init__(self, on_start_callback, on_end_callback):
+    def __init__(self, on_start_callback=None, on_end_callback=None):
+        super().__init__()
         self.on_start = on_start_callback
         self.on_end = on_end_callback
         self.running = False
