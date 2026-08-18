@@ -89,6 +89,7 @@ class PPTManagerWindow(QWidget):
         file_row.addWidget(btn_browse)
         acl.addWidget(file_widget)
 
+        # 时间行 + 不计时开关
         time_widget = QWidget()
         time_row = QHBoxLayout(time_widget)
         time_row.setContentsMargins(0, 0, 0, 0)
@@ -99,6 +100,13 @@ class PPTManagerWindow(QWidget):
         self.spin_time.setValue(10)
         self.spin_time.setSuffix(" 分钟")
         time_row.addWidget(self.spin_time)
+        # 添加时不计时开关
+        self.switch_add_ignore = SwitchButton()
+        self.switch_add_ignore.setChecked(False)
+        self.switch_add_ignore.setOnText("不计时")
+        self.switch_add_ignore.setOffText("计时")
+        time_row.addWidget(self.switch_add_ignore)
+        time_row.addSpacing(8)
         btn_add = PrimaryPushButton("添加")
         btn_add.setIcon(FIF.ADD)
         btn_add.clicked.connect(self._add_ppt)
@@ -124,9 +132,15 @@ class PPTManagerWindow(QWidget):
             ppt_timers = cfg.get("ppt_timers")
             ppt_timers[file_path] = time_val
             cfg.set("ppt_timers", ppt_timers)
+            # 如果勾选了不计时，加入 ignored 列表
+            if self.switch_add_ignore.isChecked():
+                ignored = set(cfg.get("ignored_ppts") or [])
+                ignored.add(file_path)
+                cfg.set("ignored_ppts", sorted(ignored))
             self._load_ppt_files()
             self.entry_file_path.clear()
             self.spin_time.setValue(10)
+            self.switch_add_ignore.setChecked(False)
 
     def _load_ppt_files(self):
         while self.list_layout.count() > 1:
@@ -183,14 +197,18 @@ class PPTManagerWindow(QWidget):
             row.addWidget(switch_ignore)
 
             # 修改按钮
-            btn_edit = PushButton("修改")
-            btn_edit.setFixedWidth(60)
+            btn_edit = PushButton(" 修改")
+            btn_edit.setIcon(FIF.EDIT)
+            btn_edit.setFixedWidth(80)
+            btn_edit.setFixedHeight(32)
             btn_edit.clicked.connect(lambda checked, p=file_path, t=time_min: self._edit_ppt(p, t))
             row.addWidget(btn_edit)
 
             # 删除按钮
-            btn_del = PushButton("删除")
-            btn_del.setFixedWidth(60)
+            btn_del = PushButton(" 删除")
+            btn_del.setIcon(FIF.DELETE)
+            btn_del.setFixedWidth(80)
+            btn_del.setFixedHeight(32)
             btn_del.setStyleSheet("color: #e74c3c;")
             btn_del.clicked.connect(lambda checked, p=file_path: self._delete_ppt(p))
             row.addWidget(btn_del)

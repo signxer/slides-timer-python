@@ -170,6 +170,7 @@ class SlidesTimerApp(QObject):
             SoundPlayer.play(cfg.get("sound_critical_path") if cfg.get("sound_critical_enabled") else "")
             self.timer_running = False
             self._tick_timer.stop()
+            self._emit_update()
 
     def _emit_update(self):
         """通知主窗口更新 UI"""
