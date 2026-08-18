@@ -6,6 +6,7 @@ PPT 文件时间管理窗口 — 现代 Fluent 风格。
 可独立弹出或内嵌到 MSFluentWindow。
 """
 import os
+import functools
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QScrollArea, QFrame,
     QFileDialog, QDialog
@@ -190,7 +191,7 @@ class PPTManagerWindow(QWidget):
             switch_ignore.setOnText("不计时")
             switch_ignore.setOffText("计时")
             switch_ignore.checkedChanged.connect(
-                lambda checked, p=file_path: self._toggle_ignore(p, checked)
+                functools.partial(self._toggle_ignore, file_path)
             )
             row.addWidget(switch_ignore)
 
@@ -199,7 +200,7 @@ class PPTManagerWindow(QWidget):
             btn_edit.setIcon(FIF.EDIT)
             btn_edit.setFixedWidth(90)
             btn_edit.setFixedHeight(32)
-            btn_edit.clicked.connect(lambda checked, p=file_path, t=time_min: self._edit_ppt(p, t))
+            btn_edit.clicked.connect(functools.partial(self._edit_ppt, file_path, time_min))
             row.addWidget(btn_edit)
 
             # 删除按钮
@@ -207,7 +208,7 @@ class PPTManagerWindow(QWidget):
             btn_del.setIcon(FIF.DELETE)
             btn_del.setFixedWidth(90)
             btn_del.setFixedHeight(32)
-            btn_del.clicked.connect(lambda checked, p=file_path: self._delete_ppt(p))
+            btn_del.clicked.connect(functools.partial(self._delete_ppt, file_path))
             row.addWidget(btn_del)
 
             self.list_layout.insertWidget(self.list_layout.count() - 1, card)
@@ -225,7 +226,10 @@ class PPTManagerWindow(QWidget):
         dialog = QDialog(self)
         dialog.setWindowTitle("修改PPT时间")
         dialog.setFixedSize(320, 180)
-        dialog.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
+        dialog.setWindowFlags(
+            Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Dialog
+        )
 
         dlayout = QVBoxLayout(dialog)
         dlayout.setContentsMargins(24, 24, 24, 24)
