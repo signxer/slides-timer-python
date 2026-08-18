@@ -19,7 +19,7 @@ from PySide6.QtCore import Qt
 from qfluentwidgets import (
     MSFluentWindow,
     FluentIcon as FIF,
-    SimpleCardWidget, HeaderCardWidget,
+    HeaderCardWidget,
     PrimaryPushButton, PushButton,
     TitleLabel, SubtitleLabel, BodyLabel, CaptionLabel,
     ProgressRing, InfoBar, InfoBarPosition,
@@ -63,70 +63,51 @@ class TimerPage(QWidget):
         main_row = QHBoxLayout()
         main_row.setSpacing(24)
 
-        # 左侧：状态和信息卡片
-        left_col = QVBoxLayout()
-        left_col.setSpacing(16)
-
-        # 状态卡片
+        # 状态卡片（合并倒计时与进度环）
         status_card = HeaderCardWidget(self)
         status_card.setTitle("计时状态")
         status_card.setBorderRadius(10)
         status_card.viewLayout.setContentsMargins(24, 6, 24, 16)
 
-        sl = QVBoxLayout()
-        sl.setSpacing(8)
-        sl.setContentsMargins(0, 0, 0, 0)
+        # 内部：左侧文字 + 右侧进度环
+        status_inner = QHBoxLayout()
+        status_inner.setSpacing(24)
+
+        # 左侧：倒计时文字
+        left_col = QVBoxLayout()
+        left_col.setSpacing(8)
+        left_col.setContentsMargins(0, 0, 0, 0)
 
         # 大号倒计时数字
         self.lbl_time = SubtitleLabel("00:00")
         self.lbl_time.setStyleSheet("font-size: 56px; font-weight: bold; color: #0078d4;")
         self.lbl_time.setAlignment(Qt.AlignCenter)
-        sl.addWidget(self.lbl_time)
+        left_col.addWidget(self.lbl_time)
 
         # 状态标签
         self.lbl_status = BodyLabel("等待演示开始...")
         self.lbl_status.setAlignment(Qt.AlignCenter)
         self.lbl_status.setStyleSheet("color: #888;")
-        sl.addWidget(self.lbl_status)
+        left_col.addWidget(self.lbl_status)
 
         # PPT 信息
         self.lbl_ppt = CaptionLabel("")
         self.lbl_ppt.setAlignment(Qt.AlignCenter)
         self.lbl_ppt.setStyleSheet("color: #aaa;")
-        sl.addWidget(self.lbl_ppt)
+        left_col.addWidget(self.lbl_ppt)
 
-        status_card.viewLayout.addLayout(sl)
-        left_col.addWidget(status_card, 1)
+        status_inner.addLayout(left_col, 1)
 
-        # ── 右侧：进度环 ──
-        right_col = QVBoxLayout()
-        right_col.setSpacing(16)
-        right_col.setAlignment(Qt.AlignCenter)
-
-        goal_card = SimpleCardWidget(self)
-        goal_card.setBorderRadius(10)
-        gl = QVBoxLayout(goal_card)
-        gl.setContentsMargins(24, 20, 24, 20)
-        gl.setSpacing(12)
-        gl.setAlignment(Qt.AlignCenter)
-
-        gl.addWidget(CaptionLabel("完成进度"), 0, Qt.AlignCenter)
-
+        # 右侧：进度环
         self.progress_ring = ProgressRing(self)
-        self.progress_ring.setFixedSize(140, 140)
+        self.progress_ring.setFixedSize(120, 120)
         self.progress_ring.setValue(0)
         self.progress_ring.setTextVisible(True)
         self.progress_ring.setStrokeWidth(8)
-        gl.addWidget(self.progress_ring, 0, Qt.AlignCenter)
+        status_inner.addWidget(self.progress_ring, 0, Qt.AlignCenter)
 
-        self.lbl_progress = CaptionLabel("0%")
-        self.lbl_progress.setAlignment(Qt.AlignCenter)
-        gl.addWidget(self.lbl_progress)
-
-        right_col.addWidget(goal_card)
-
-        main_row.addLayout(left_col, 1)
-        main_row.addLayout(right_col)
+        status_card.viewLayout.addLayout(status_inner)
+        main_row.addWidget(status_card)
         layout.addLayout(main_row, 1)
 
         # ── 控制按钮栏 ──
@@ -188,7 +169,6 @@ class TimerPage(QWidget):
             if total > 0:
                 pct = int((total - remaining) / total * 100)
                 self.progress_ring.setValue(pct)
-                self.lbl_progress.setText(f"{pct}%")
             self.lbl_status.setText("正在计时...")
             self.lbl_status.setStyleSheet("color: #107c10;")
             self.btn_start.setEnabled(False)
@@ -216,7 +196,6 @@ class TimerPage(QWidget):
         else:
             self.lbl_time.setText("00:00")
             self.progress_ring.setValue(0)
-            self.lbl_progress.setText("0%")
             self.lbl_status.setText("等待演示开始...")
             self.lbl_status.setStyleSheet("color: #888;")
             self.btn_start.setEnabled(True)
