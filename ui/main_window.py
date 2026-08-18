@@ -40,6 +40,7 @@ class TimerPage(QWidget):
     def __init__(self, app_ref, parent=None):
         super().__init__(parent)
         self.app = app_ref
+        self.setObjectName("timerPage")
         self._build_ui()
 
     def _build_ui(self):
@@ -232,6 +233,7 @@ class SettingsPage(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("settingsPage")
         self._build_ui()
 
     def _build_ui(self):
@@ -249,6 +251,7 @@ class PPTManagerPage(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setObjectName("pptManagerPage")
         self._build_ui()
 
     def _build_ui(self):
