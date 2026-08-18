@@ -1,9 +1,8 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
 from qfluentwidgets import (
-    FluentWindow, PrimaryPushButton, PushButton, SpinBox,
-    CardWidget, BodyLabel, StrongBodyLabel, TitleLabel,
+    PrimaryPushButton, PushButton, SpinBox,
+    StrongBodyLabel,
     FluentIcon as FIF
 )
 

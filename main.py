@@ -2,7 +2,7 @@ import sys
 import os
 
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QObject, QTimer, Signal
+from PySide6.QtCore import QObject, QTimer
 from PySide6.QtGui import QIcon
 
 from config import cfg

@@ -5,7 +5,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from qfluentwidgets import (
-    FluentWindow, CardWidget, GroupHeaderCardWidget,
+    CardWidget, GroupHeaderCardWidget,
     LineEdit, DoubleSpinBox, PushButton, PrimaryPushButton,
     BodyLabel, StrongBodyLabel, CaptionLabel,
     FluentIcon as FIF, MessageBox

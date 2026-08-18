@@ -3,6 +3,9 @@ name: Build & Release
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
   workflow_dispatch:
 
 env:
@@ -10,9 +13,43 @@ env:
 
 jobs:
   # ────────────────────────────────────────────────────────────
+  # Test — 在 PR 和 push 上先跑测试
+  # ────────────────────────────────────────────────────────────
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run core tests (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          python3 -m pytest test/test_core.py test/test_sound.py -v
+
+      - name: Run core tests (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          python -m pytest test/test_core.py test/test_sound.py -v
+
+  # ────────────────────────────────────────────────────────────
   # Windows exe
   # ────────────────────────────────────────────────────────────
   build-windows:
+    needs: [test]
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -55,109 +92,54 @@ jobs:
           path: dist/slides-timer.exe
 
   # ────────────────────────────────────────────────────────────
-  # Linux deb — amd64
+  # Linux deb — amd64 (x86) 与 arm64 (飞腾/鲲鹏)
+  #
+  # 麒麟 V10 桌面版 glibc 为 2.31。GitHub runner 的 setup-python
+  # （python-build-standalone）现在提供的 libpython 要求 GLIBC_2.38，新版
+  # PySide6 的 arm64 wheel 要求 GLIBC_2.39，都高于 2.31 —— 直接在 runner 上打包
+  # 的产物在麒麟上无法启动（双击无反应 / 报 "GLIBC_2.38 not found"）。
+  # 因此这里在 ubuntu:20.04（glibc 2.31，与麒麟完全一致）容器内编译 CPython 3.11
+  # 后构建，并在容器内用 deb 声明的依赖做启动冒烟 + 端到端安装验证，
+  # 见 scripts/build-deb-container.sh。
+  # PyInstaller 不能交叉编译，故 amd64 用 x86 runner、arm64 用原生 arm64 runner
+  # （ubuntu-24.04-arm）分别构建，无需 QEMU。
   # ────────────────────────────────────────────────────────────
-  build-amd64:
-    runs-on: ubuntu-22.04
+  build-linux:
+    name: deb (${{ matrix.arch }})
+    needs: [test]
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: amd64
+            os: ubuntu-24.04
+          - arch: arm64
+            os: ubuntu-24.04-arm
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xdotool dpkg-dev fakeroot
-          pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pyinstaller
-
-      - name: Build with PyInstaller
-        run: |
-          pyinstaller \
-            --onefile \
-            --name slides-timer \
-            --add-data "ui/assets:ui/assets" \
-            --add-data "config.json:." \
-            --add-data "didi.wav:." \
-            --add-data "icon.png:." \
-            --hidden-import PySide6.QtWidgets \
-            --hidden-import PySide6.QtCore \
-            --hidden-import PySide6.QtGui \
-            --hidden-import PySide6.QtSvg \
-            --hidden-import qfluentwidgets \
-            --exclude-module tkinter \
-            --exclude-module customtkinter \
-            main.py
-
-      - name: Build deb package
+      - name: Build DEB in glibc-2.31 container (${{ matrix.arch }})
         run: |
           VERSION="1.0.0-${{ github.run_number }}-$(echo ${{ github.sha }} | cut -c1-8)"
-          VERSION="${VERSION}" bash scripts/build-deb.sh amd64
+          docker run --platform linux/${{ matrix.arch }} --rm \
+            -v "$PWD:/src" -w /src \
+            -e VERSION="$VERSION" \
+            ubuntu:20.04 \
+            bash -c "bash scripts/build-deb-container.sh ${{ matrix.arch }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: deb-amd64
-          path: dist/*.deb
-
-  # ────────────────────────────────────────────────────────────
-  # Linux deb — arm64
-  # ────────────────────────────────────────────────────────────
-  build-arm64:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up QEMU for arm64
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
-      - name: Build arm64 deb in container
-        uses: uraimo/run-on-arch-action@v3
-        with:
-          arch: aarch64
-          distro: ubuntu22.04
-          githubToken: ${{ github.token }}
-          install: |
-            apt-get update
-            apt-get install -y python3 python3-pip python3-venv xdotool dpkg-dev fakeroot
-          run: |
-            pip3 install -r requirements.txt
-            pip3 install pyinstaller
-            pyinstaller \
-              --onefile \
-              --name slides-timer \
-              --add-data "ui/assets:ui/assets" \
-              --add-data "config.json:." \
-              --add-data "didi.wav:." \
-              --add-data "icon.png:." \
-              --hidden-import PySide6.QtWidgets \
-              --hidden-import PySide6.QtCore \
-              --hidden-import PySide6.QtGui \
-              --hidden-import PySide6.QtSvg \
-              --hidden-import qfluentwidgets \
-              --exclude-module tkinter \
-              --exclude-module customtkinter \
-              main.py
-            VERSION="1.0.0-${{ github.run_number }}-$(echo ${{ github.sha }} | cut -c1-8)" \
-              bash scripts/build-deb.sh arm64
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: deb-arm64
+          name: slides-timer-deb-${{ matrix.arch }}
           path: dist/*.deb
 
   # ────────────────────────────────────────────────────────────
   # Release
   # ────────────────────────────────────────────────────────────
   release:
-    needs: [build-windows, build-amd64, build-arm64]
+    needs: [build-windows, build-linux]
     runs-on: ubuntu-22.04
     permissions:
       contents: write
@@ -192,13 +174,13 @@ jobs:
             | Platform | File |
             |----------|------|
             | Windows (x64) | `slides-timer.exe` |
-            | Linux (amd64) | `slides-timer_*_amd64.deb` |
-            | Linux (arm64) | `slides-timer_*_arm64.deb` |
+            | Linux (amd64, 麒麟V10 x86) | `slides-timer_*_amd64.deb` |
+            | Linux (arm64, 麒麟V10 飞腾/鲲鹏) | `slides-timer_*_arm64.deb` |
 
-            ### Linux 安装
+            ### Linux (麒麟 V10) 安装
             ```bash
-            sudo dpkg -i slides-timer_*_amd64.deb
-            sudo apt-get install -f
+            sudo dpkg -i slides-timer_*_amd64.deb   # x86 用 amd64 包
+            sudo dpkg -i slides-timer_*_arm64.deb   # 飞腾/鲲鹏用 arm64 包
             ```
           files: |
             artifacts/**/*.exe

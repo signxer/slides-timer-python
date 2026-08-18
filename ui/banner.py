@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QWidget, QLabel, QGraphicsOpacityEffect, QApplication
-from PySide6.QtCore import Qt, QPropertyAnimation, QTimer, QEasingCurve, Property
-from PySide6.QtGui import QFont, QColor, QPalette
+from PySide6.QtCore import Qt, QPropertyAnimation, QTimer, QEasingCurve
+from PySide6.QtGui import QFont
 
 
 class BannerWindow(QWidget):

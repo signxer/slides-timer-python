@@ -3,10 +3,9 @@ from PySide6.QtWidgets import (
     QFileDialog, QFrame, QApplication
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFontDatabase
 from qfluentwidgets import (
     TabWidget, CardWidget, GroupHeaderCardWidget,
-    LineEdit, SpinBox, DoubleSpinBox, ComboBox, SwitchButton,
+    LineEdit, SpinBox, ComboBox, SwitchButton,
     PushButton, PrimaryPushButton, ColorPickerButton,
     BodyLabel, StrongBodyLabel, CaptionLabel,
     FluentIcon as FIF
