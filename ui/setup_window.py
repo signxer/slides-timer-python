@@ -25,7 +25,7 @@ class SetupWindow(QWidget):
 
     def _init_ui(self):
         self.setWindowTitle("设置演讲倒计时")
-        self.setFixedSize(480, 400)
+        self.setFixedSize(480, 330)
         self.setWindowFlags(
             Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Dialog

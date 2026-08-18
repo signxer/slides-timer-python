@@ -6,6 +6,7 @@
 演示中途退出时，询问用户"是否已完成"。
 类似 silent-rain 中的 Dialog 用法。
 """
+from PySide6.QtCore import Qt
 from qfluentwidgets import Dialog, BodyLabel
 
 
@@ -19,6 +20,11 @@ class ResumeDialog(Dialog):
         )
         self.on_resume = on_resume
         self.on_stop = on_stop
+
+        # 确保在最前显示
+        self.setWindowFlags(
+            self.windowFlags() | Qt.WindowType.WindowStaysOnTopHint
+        )
 
         # 自定义按钮文字
         self.yesButton.setText("是的，已完成")
