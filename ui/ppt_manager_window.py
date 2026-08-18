@@ -199,18 +199,17 @@ class PPTManagerWindow(QWidget):
             # 修改按钮
             btn_edit = PushButton("修改")
             btn_edit.setIcon(FIF.EDIT)
-            btn_edit.setFixedWidth(80)
+            btn_edit.setFixedWidth(90)
             btn_edit.setFixedHeight(32)
-            btn_edit.setStyleSheet("padding: 0 6px;")
             btn_edit.clicked.connect(lambda checked, p=file_path, t=time_min: self._edit_ppt(p, t))
             row.addWidget(btn_edit)
 
             # 删除按钮
             btn_del = PushButton("删除")
             btn_del.setIcon(FIF.DELETE)
-            btn_del.setFixedWidth(80)
+            btn_del.setFixedWidth(90)
             btn_del.setFixedHeight(32)
-            btn_del.setStyleSheet("color: #e74c3c; padding: 0 6px;")
+            btn_del.setStyleSheet("color: #e74c3c;")
             btn_del.clicked.connect(lambda checked, p=file_path: self._delete_ppt(p))
             row.addWidget(btn_del)
 

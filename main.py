@@ -1,5 +1,7 @@
 import sys
 import os
+import logging
+from datetime import datetime
 
 from PySide6.QtWidgets import QApplication
 from PySide6.QtCore import QObject, QTimer, Qt, QSize
@@ -13,6 +15,17 @@ from ui.banner import BannerOverlay
 from ui.setup_window import SetupWindow
 from ui.settings_window import SettingsWindow
 from ui.resume_dialog import ResumeDialog
+
+# 调试日志
+LOG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "slides_timer_debug.log")
+logging.basicConfig(
+    filename=LOG_FILE,
+    level=logging.DEBUG,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    force=True
+)
+log = logging.getLogger(__name__)
+log.info("=== Slides Timer started ===")
 
 
 class SlidesTimerApp(QObject):
@@ -58,18 +71,20 @@ class SlidesTimerApp(QObject):
         # 启动监控
         self.monitor.start()
 
-        print("Application Started. Waiting for PowerPoint/WPS...")
+        log.info("Application Started. Waiting for PowerPoint/WPS...")
 
     # ── 计时核心逻辑 ──────────────────────────────────────────
 
     def on_slideshow_start(self, ppt_path=None):
-        print(f"Slideshow Started. Path: {ppt_path}")
+        log.info(f"on_slideshow_start called from thread. Path: {ppt_path}")
         # 确保在主线程执行 UI 操作（monitor 在后台线程中调用）
         QTimer.singleShot(0, lambda: self._on_slideshow_start(ppt_path))
 
     def _on_slideshow_start(self, ppt_path=None):
+        log.info(f"_on_slideshow_start (main thread). Path: {ppt_path}")
+        log.info(f"  timer_paused={self.timer_paused}, session_finished={self.session_finished}")
         if self.timer_paused and not self.session_finished:
-            print("Resuming previous session...")
+            log.info("Resuming previous session...")
             self.timer_paused = False
             self.timer_running = True
             self._tick_timer.start()
@@ -78,7 +93,7 @@ class SlidesTimerApp(QObject):
             self._start_new_session(ppt_path)
 
     def on_slideshow_end(self):
-        print("Slideshow Ended.")
+        log.info("Slideshow Ended.")
         # 确保在主线程执行 UI 操作（monitor 在后台线程中调用）
         QTimer.singleShot(0, lambda: self._on_slideshow_end())
 
@@ -94,7 +109,7 @@ class SlidesTimerApp(QObject):
             self._emit_update()
 
     def start_timer(self, minutes, show_notification=False):
-        print(f"Starting timer for {minutes} minutes")
+        log.info(f"Starting timer for {minutes} minutes")
         self._current_minutes = minutes
         self.total_seconds = int(minutes * 60)
         self.remaining_seconds = self.total_seconds
@@ -151,6 +166,7 @@ class SlidesTimerApp(QObject):
 
         if not self.warning_triggered and should_warn:
             self.warning_triggered = True
+            log.info(f"WARNING TRIGGERED: remaining={self.remaining_seconds}s, text='{cfg.get('text_warning')}'")
             self.show_banner(
                 cfg.get("text_warning"),
                 cfg.get("bg_color_warning"),
@@ -162,6 +178,7 @@ class SlidesTimerApp(QObject):
         if not self.critical_triggered and self.remaining_seconds <= 0:
             self.critical_triggered = True
             self.session_finished = True
+            log.info(f"CRITICAL TRIGGERED: remaining={self.remaining_seconds}s, text='{cfg.get('text_critical')}'")
             self.show_banner(
                 cfg.get("text_critical"),
                 cfg.get("bg_color_critical"),
@@ -186,12 +203,12 @@ class SlidesTimerApp(QObject):
     # ── 窗口 / 对话框 ─────────────────────────────────────────
 
     def _start_new_session(self, ppt_path=None):
-        print(f"Starting new session. PPT: {ppt_path}")
+        log.info(f"Starting new session. PPT: {ppt_path}")
         if ppt_path:
             # 检查是否在忽略列表
             ignored = set(cfg.get("ignored_ppts") or [])
             if ppt_path in ignored:
-                print(f"PPT is in ignored list, skipping timer")
+                log.info(f"PPT is in ignored list, skipping timer")
                 return
 
             ppt_timers = cfg.get("ppt_timers")
@@ -201,18 +218,19 @@ class SlidesTimerApp(QObject):
                 if normalized_ppt_path == normalized_stored_path:
                     # 再次检查忽略（用存储路径）
                     if stored_path in ignored:
-                        print(f"PPT is in ignored list, skipping timer")
+                        log.info(f"PPT is in ignored list, skipping timer")
                         return
-                    print(f"Found preset time for PPT: {time_min} minutes")
+                    log.info(f"Found preset time for PPT: {time_min} minutes")
                     self.start_timer(time_min, show_notification=True)
                     return
-            print("No preset time found for this PPT")
+            log.info("No preset time found for this PPT")
 
         win = SetupWindow(self.start_timer, self.open_settings, parent=None)
         win.show()
         win.raise_()
         win.activateWindow()
-        QTimer.singleShot(200, win.raise_)
+        log.info(f"SetupWindow shown: visible={win.isVisible()}, flags={win.windowFlags()}")
+        QTimer.singleShot(200, lambda: log.info(f"SetupWindow after 200ms: visible={win.isVisible()}, isActive={win.isActiveWindow()}"))
         QTimer.singleShot(500, win.raise_)
 
     def open_settings(self):
@@ -228,10 +246,10 @@ class SlidesTimerApp(QObject):
     # ── 回调 ──────────────────────────────────────────────────
 
     def on_user_resume(self):
-        print("User chose to resume later.")
+        log.info("User chose to resume later.")
 
     def on_user_stop(self):
-        print("User chose to stop.")
+        log.info("User chose to stop.")
         self.reset_state()
         self._emit_update()
 
@@ -267,6 +285,7 @@ class SlidesTimerApp(QObject):
         QApplication.instance().quit()
 
     def show_banner(self, text, bg_color, duration):
+        log.info(f"show_banner: text='{text}', bg='{bg_color}', duration={duration}s")
         self.banner.show_message(
             message=text,
             bg_color=bg_color,
@@ -280,6 +299,8 @@ class SlidesTimerApp(QObject):
             manual_width=cfg.get("screen_width"),
             manual_height=cfg.get("screen_height"),
         )
+        # 检查横幅是否真的显示出来了
+        log.info(f"  banner visible={self.banner.isVisible()}, geometry={self.banner.geometry().getRect()}")
 
 
 def main():
