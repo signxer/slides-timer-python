@@ -29,7 +29,6 @@ class SetupWindow(QWidget):
         self.setWindowFlags(
             Qt.WindowType.WindowStaysOnTopHint
             | Qt.WindowType.Dialog
-            | Qt.WindowType.WindowDoesNotAcceptFocus
         )
 
         layout = QVBoxLayout(self)

@@ -16,17 +16,13 @@ class BannerOverlay(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        # Windows 全屏放映下必须使用这些标志才能显示在前
-        # Tool 在 Windows 全屏 DirectX 覆盖层下层级不够，
-        # 改用 FramelessWindowHint + WindowStaysOnTopHint
         self.setWindowFlags(
             Qt.WindowType.FramelessWindowHint
             | Qt.WindowType.WindowStaysOnTopHint
-            | Qt.WindowType.WindowDoesNotAcceptFocus
+            | Qt.WindowType.Tool
         )
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
-        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
 
         self._is_animating = False
         self._flash_visible = True

@@ -208,7 +208,7 @@ class SlidesTimerApp(QObject):
                     return
             print("No preset time found for this PPT")
 
-        win = SetupWindow(self.start_timer, self.open_settings, parent=self.main_window)
+        win = SetupWindow(self.start_timer, self.open_settings, parent=None)
         win.show()
         win.raise_()
         win.activateWindow()
@@ -223,9 +223,6 @@ class SlidesTimerApp(QObject):
 
     def _open_resume_dialog(self):
         dlg = ResumeDialog(self.on_user_resume, self.on_user_stop)
-        # 设置父窗口确保对话框在正确层级显示
-        if self.main_window:
-            dlg.setParent(self.main_window)
         dlg.exec()
 
     # ── 回调 ──────────────────────────────────────────────────
@@ -242,7 +239,7 @@ class SlidesTimerApp(QObject):
         self.open_settings()
 
     def on_tray_start(self):
-        win = SetupWindow(self.start_timer, self.open_settings, parent=self.main_window)
+        win = SetupWindow(self.start_timer, self.open_settings, parent=None)
         win.show()
         win.raise_()
         win.activateWindow()

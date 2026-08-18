@@ -18,14 +18,13 @@ from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QIcon, QColor
 
 from qfluentwidgets import (
-    MSFluentWindow, MSFluentTitleBar,
+    MSFluentWindow,
     FluentIcon as FIF,
     HeaderCardWidget,
     PrimaryPushButton, PushButton,
     TitleLabel, SubtitleLabel, BodyLabel, CaptionLabel,
     ProgressRing, InfoBar, InfoBarPosition,
     IconWidget,
-    isDarkTheme,
 )
 
 from config import cfg
@@ -242,24 +241,6 @@ class PPTManagerPage(QWidget):
         layout.addWidget(self.manager)
 
 
-# ─── 自定义标题栏（带应用图标）─────────────────────────────────
-
-
-class AppTitleBar(MSFluentTitleBar):
-    """标题栏 — 左侧显示应用图标"""
-
-    def __init__(self, parent):
-        super().__init__(parent)
-        # 应用图标
-        self.app_icon = IconWidget(self)
-        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "icon.png")
-        if os.path.exists(icon_path):
-            self.app_icon.setIcon(QIcon(icon_path))
-        self.app_icon.setFixedSize(22, 22)
-        self.hBoxLayout.insertWidget(0, self.app_icon, 0, Qt.AlignLeft)
-        self.hBoxLayout.insertSpacing(1, 8)
-
-
 # ─── 主窗口 ─────────────────────────────────────────────────
 
 
@@ -268,12 +249,15 @@ class MainWindow(MSFluentWindow):
 
     def __init__(self, app_ref):
         super().__init__()
-        # 替换标题栏
-        self.setTitleBar(AppTitleBar(self))
         self.app = app_ref
         self.setWindowTitle("演讲计时助手")
         self.resize(860, 600)
         self.setMinimumSize(640, 480)
+
+        # 设置标题栏图标（使用 MSFluentTitleBar.setIcon）
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "icon.png")
+        if os.path.exists(icon_path):
+            self.titleBar.setIcon(QIcon(icon_path))
 
         # 创建页面 — SettingsPage 和 PPTManagerPage 不再需要 app_ref
         self.timer_page = TimerPage(app_ref, self)
