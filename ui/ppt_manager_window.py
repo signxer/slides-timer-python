@@ -201,7 +201,7 @@ class PPTManagerWindow(QWidget):
             btn_edit.setIcon(FIF.EDIT)
             btn_edit.setFixedWidth(90)
             btn_edit.setFixedHeight(32)
-            btn_edit.clicked.connect(lambda checked, p=file_path, t=time_min: self._edit_ppt(p, t))
+            btn_edit.clicked.connect(lambda p=file_path, t=time_min: self._edit_ppt(p, t))
             row.addWidget(btn_edit)
 
             # 删除按钮
@@ -209,8 +209,7 @@ class PPTManagerWindow(QWidget):
             btn_del.setIcon(FIF.DELETE)
             btn_del.setFixedWidth(90)
             btn_del.setFixedHeight(32)
-            btn_del.setStyleSheet("color: #e74c3c;")
-            btn_del.clicked.connect(lambda checked, p=file_path: self._delete_ppt(p))
+            btn_del.clicked.connect(lambda p=file_path: self._delete_ppt(p))
             row.addWidget(btn_del)
 
             self.list_layout.insertWidget(self.list_layout.count() - 1, card)
