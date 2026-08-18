@@ -207,7 +207,12 @@ class SlidesTimerApp(QObject):
                     return
             print("No preset time found for this PPT")
 
-        SetupWindow(self.start_timer, self.open_settings, parent=self.main_window).show()
+        win = SetupWindow(self.start_timer, self.open_settings, parent=self.main_window)
+        win.show()
+        win.raise_()
+        win.activateWindow()
+        QTimer.singleShot(200, win.raise_)
+        QTimer.singleShot(500, win.raise_)
 
     def open_settings(self):
         if self._settings_window is None or not self._settings_window.isVisible():
@@ -236,7 +241,10 @@ class SlidesTimerApp(QObject):
         self.open_settings()
 
     def on_tray_start(self):
-        SetupWindow(self.start_timer, self.open_settings, parent=self.main_window).show()
+        win = SetupWindow(self.start_timer, self.open_settings, parent=self.main_window)
+        win.show()
+        win.raise_()
+        win.activateWindow()
 
     def reset_state(self):
         self.timer_running = False

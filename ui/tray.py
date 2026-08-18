@@ -5,9 +5,9 @@
 
 Silent-rain 风格参考：ToolButton 图标 + 清晰菜单结构。
 """
-from PySide6.QtWidgets import QSystemTrayIcon, QMenu
-from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPen
-from PySide6.QtCore import QSize
+import os
+from PySide6.QtWidgets import QSystemTrayIcon, QMenu, QApplication
+from PySide6.QtGui import QIcon
 
 
 class SystemTray(QSystemTrayIcon):
@@ -20,7 +20,15 @@ class SystemTray(QSystemTrayIcon):
         self.on_show_window = None
         self.on_start_timer = None
 
-        self.setIcon(self._create_icon())
+        # 使用应用图标，PyInstaller 打包的 exe 会嵌入 icon.ico
+        icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "icon.png")
+        if os.path.exists(icon_path):
+            self.setIcon(QIcon(icon_path))
+        else:
+            # 兜底：从 QApplication 获取
+            app_icon = QApplication.instance().windowIcon()
+            if not app_icon.isNull():
+                self.setIcon(app_icon)
         self.setToolTip("演讲计时助手")
 
         # 右键菜单

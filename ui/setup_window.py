@@ -26,7 +26,11 @@ class SetupWindow(QWidget):
     def _init_ui(self):
         self.setWindowTitle("设置演讲倒计时")
         self.setFixedSize(480, 400)
-        self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint | Qt.WindowType.Dialog)
+        self.setWindowFlags(
+            Qt.WindowType.WindowStaysOnTopHint
+            | Qt.WindowType.Dialog
+            | Qt.WindowType.WindowDoesNotAcceptFocus
+        )
 
         layout = QVBoxLayout(self)
         layout.setSpacing(16)
@@ -95,6 +99,12 @@ class SetupWindow(QWidget):
     def _adjust_time(self, delta):
         val = self.time_spinbox.value() + delta
         self.time_spinbox.setValue(max(1, val))
+
+    def showEvent(self, event):
+        """显示时确保在最上层"""
+        super().showEvent(event)
+        self.raise_()
+        self.activateWindow()
 
     def _on_start_click(self):
         minutes = self.time_spinbox.value()
