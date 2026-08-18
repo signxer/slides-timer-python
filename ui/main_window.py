@@ -168,7 +168,7 @@ class TimerPage(QWidget):
 
     def _on_start(self):
         from ui.setup_window import SetupWindow
-        SetupWindow(self.app.start_timer, self.app.open_settings).show()
+        SetupWindow(self.app.start_timer, self.app.open_settings, parent=self).show()
 
     def _on_pause(self):
         self.app.pause_timer()

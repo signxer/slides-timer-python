@@ -18,8 +18,8 @@ from qfluentwidgets import (
 class SetupWindow(QWidget):
     """计时设置窗口（弹出式）"""
 
-    def __init__(self, on_start_callback, on_settings_callback):
-        super().__init__()
+    def __init__(self, on_start_callback, on_settings_callback, parent=None):
+        super().__init__(parent)
         self.on_start = on_start_callback
         self.on_settings = on_settings_callback
         self._init_ui()

@@ -64,6 +64,10 @@ class SlidesTimerApp(QObject):
 
     def on_slideshow_start(self, ppt_path=None):
         print(f"Slideshow Started. Path: {ppt_path}")
+        # 确保在主线程执行 UI 操作（monitor 在后台线程中调用）
+        QTimer.singleShot(0, lambda: self._on_slideshow_start(ppt_path))
+
+    def _on_slideshow_start(self, ppt_path=None):
         if self.timer_paused and not self.session_finished:
             print("Resuming previous session...")
             self.timer_paused = False
@@ -75,6 +79,10 @@ class SlidesTimerApp(QObject):
 
     def on_slideshow_end(self):
         print("Slideshow Ended.")
+        # 确保在主线程执行 UI 操作（monitor 在后台线程中调用）
+        QTimer.singleShot(0, lambda: self._on_slideshow_end())
+
+    def _on_slideshow_end(self):
         if self.timer_running:
             self.timer_running = False
             self.timer_paused = True
@@ -189,7 +197,7 @@ class SlidesTimerApp(QObject):
                     return
             print("No preset time found for this PPT")
 
-        SetupWindow(self.start_timer, self.open_settings).show()
+        SetupWindow(self.start_timer, self.open_settings, parent=self.main_window).show()
 
     def open_settings(self):
         if self._settings_window is None or not self._settings_window.isVisible():
@@ -199,6 +207,9 @@ class SlidesTimerApp(QObject):
 
     def _open_resume_dialog(self):
         dlg = ResumeDialog(self.on_user_resume, self.on_user_stop)
+        # 设置父窗口确保对话框在正确层级显示
+        if self.main_window:
+            dlg.setParent(self.main_window)
         dlg.exec()
 
     # ── 回调 ──────────────────────────────────────────────────
@@ -215,7 +226,7 @@ class SlidesTimerApp(QObject):
         self.open_settings()
 
     def on_tray_start(self):
-        SetupWindow(self.start_timer, self.open_settings).show()
+        SetupWindow(self.start_timer, self.open_settings, parent=self.main_window).show()
 
     def reset_state(self):
         self.timer_running = False
