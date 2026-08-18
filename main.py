@@ -2,7 +2,7 @@ import sys
 import os
 
 from PySide6.QtWidgets import QApplication
-from PySide6.QtCore import QObject, QTimer, Qt
+from PySide6.QtCore import QObject, QTimer, Qt, QSize
 from PySide6.QtGui import QIcon
 
 from config import cfg
@@ -274,6 +274,15 @@ def main():
     if os.path.exists(icon_path):
         app.setWindowIcon(QIcon(icon_path))
 
+    # 启动页（使用 QFluentWidgets 的 SplashScreen）
+    from qfluentwidgets import SplashScreen
+    splash = SplashScreen(QIcon(icon_path), enableShadow=True)
+    splash.setIconSize(QSize(128, 128))
+    splash.show()
+
+    # 处理事件让启动页显示出来
+    app.processEvents()
+
     # 延迟导入避免循环
     from ui.main_window import MainWindow
 
@@ -281,6 +290,9 @@ def main():
     window = MainWindow(timer_app)
     timer_app.main_window = window
     window.show()
+
+    # 关闭启动页
+    splash.finish()
 
     sys.exit(app.exec())
 
