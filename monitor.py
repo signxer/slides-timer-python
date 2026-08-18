@@ -3,6 +3,7 @@ import time
 import threading
 import subprocess
 import re
+import os
 
 
 class SlideShowMonitor:
@@ -74,14 +75,62 @@ class SlideShowMonitor:
                     )
                     title = name_result.stdout.strip()
                     if self._is_slideshow_title(title):
-                        # 尝试从标题中提取文件名
                         ppt_path = self._extract_ppt_path_from_title(title)
+                        # 如果只提取到文件名（无路径），尝试通过进程信息获取完整路径
+                        if ppt_path and not os.path.isabs(ppt_path):
+                            full_path = self._resolve_full_path_linux(wid, ppt_path)
+                            if full_path:
+                                ppt_path = full_path
                         return True, ppt_path
                 except (subprocess.TimeoutExpired, FileNotFoundError):
                     continue
         except (subprocess.TimeoutExpired, FileNotFoundError):
             pass
         return False, None
+
+    def _resolve_full_path_linux(self, window_id, filename):
+        """通过窗口PID和进程打开的文件描述符查找PPT完整路径"""
+        try:
+            # 获取窗口所属进程 PID
+            pid_result = subprocess.run(
+                ["xdotool", "getwindowpid", window_id],
+                capture_output=True, text=True, timeout=3
+            )
+            if pid_result.returncode != 0:
+                return None
+            pid = pid_result.stdout.strip()
+            if not pid or not pid.isdigit():
+                return None
+
+            # 通过 /proc/PID/fd/ 查找该进程打开的文件描述符，
+            # 匹配以 .ppt 或 .pptx 结尾的文件路径
+            fd_dir = f"/proc/{pid}/fd"
+            if not os.path.isdir(fd_dir):
+                return None
+
+            for fd_name in os.listdir(fd_dir):
+                try:
+                    link = os.readlink(os.path.join(fd_dir, fd_name))
+                    if link.lower().endswith(('.ppt', '.pptx')):
+                        # 确认文件名匹配
+                        link_basename = os.path.basename(link)
+                        if link_basename.lower() == filename.lower():
+                            return link
+                except (OSError, FileNotFoundError):
+                    continue
+
+            # 兜底：如果文件名匹配找到但路径不同，返回第一个 ppt 文件
+            for fd_name in os.listdir(fd_dir):
+                try:
+                    link = os.readlink(os.path.join(fd_dir, fd_name))
+                    if link.lower().endswith(('.ppt', '.pptx')):
+                        return link
+                except (OSError, FileNotFoundError):
+                    continue
+
+            return None
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
+            return None
 
     def _is_slideshow_title(self, title: str) -> bool:
         """判断窗口标题是否表示正在放映"""
