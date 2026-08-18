@@ -11,21 +11,22 @@ Slides Timer 主窗口 — 现代 Fluent 仪表盘。
 布局参照 silent-rain 的 DashboardScreen：
   HeaderCardWidget / SimpleCardWidget / ProgressRing / InfoBar / 统一边距。
 """
+import os
+
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout
-from PySide6.QtCore import Qt, QTimer
-from PySide6.QtGui import QColor
+from PySide6.QtCore import Qt
 
 from qfluentwidgets import (
     MSFluentWindow,
     FluentIcon as FIF,
     SimpleCardWidget, HeaderCardWidget,
-    PrimaryPushButton, PushButton, ToolButton,
+    PrimaryPushButton, PushButton,
     TitleLabel, SubtitleLabel, BodyLabel, CaptionLabel,
     ProgressRing, InfoBar, InfoBarPosition,
     IconWidget,
-    setTheme, Theme,
 )
 
+from config import cfg
 from ui.settings_window import SettingsWindow
 from ui.ppt_manager_window import PPTManagerWindow
 
@@ -145,7 +146,7 @@ class TimerPage(QWidget):
         control_bar.addWidget(self.btn_pause)
 
         self.btn_resume = PushButton("  继续")
-        self.btn_resume.setIcon(FIP if hasattr(FIF, 'RETURN') else FIF.PLAY)
+        self.btn_resume.setIcon(FIF.PLAY)
         self.btn_resume.setFixedHeight(42)
         self.btn_resume.clicked.connect(self._on_resume)
         self.btn_resume.setEnabled(False)
@@ -183,13 +184,10 @@ class TimerPage(QWidget):
         if running and not paused:
             mins, secs = divmod(remaining, 60)
             self.lbl_time.setText(f"{mins:02d}:{secs:02d}")
-
-            # 更新进度环
             if total > 0:
                 pct = int((total - remaining) / total * 100)
                 self.progress_ring.setValue(pct)
                 self.lbl_progress.setText(f"{pct}%")
-
             self.lbl_status.setText("正在计时...")
             self.lbl_status.setStyleSheet("color: #107c10;")
             self.btn_start.setEnabled(False)
@@ -226,26 +224,20 @@ class TimerPage(QWidget):
             self.btn_stop.setEnabled(False)
 
 
-# Pre-create a Play icon alias for resume button
-FIP = FIF.PLAY
-
-
 # ─── 设置页面 ───────────────────────────────────────────────
 
 
 class SettingsPage(QWidget):
-    """设置页面：内嵌 SettingsWindow 的内容"""
+    """设置页面：内嵌 SettingsWindow 的内容，接收 cfg 而非 app_ref"""
 
-    def __init__(self, cfg_manager, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
-        self.cfg = cfg_manager
         self._build_ui()
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        # 内嵌设置窗口
-        self.settings_win = SettingsWindow(self.cfg, embed=True)
+        self.settings_win = SettingsWindow(cfg, embed=True)
         layout.addWidget(self.settings_win)
 
 
@@ -279,9 +271,9 @@ class MainWindow(MSFluentWindow):
         self.resize(860, 600)
         self.setMinimumSize(640, 480)
 
-        # 创建页面
+        # 创建页面 — SettingsPage 和 PPTManagerPage 不再需要 app_ref
         self.timer_page = TimerPage(app_ref, self)
-        self.settings_page = SettingsPage(app_ref, parent=self)
+        self.settings_page = SettingsPage(self)
         self.ppt_page = PPTManagerPage(self)
 
         # 添加导航项
@@ -292,7 +284,6 @@ class MainWindow(MSFluentWindow):
         # 默认选中计时器
         self.switchTo(self.timer_page)
 
-        # 监听 PPT 放映时的自动唤起：切换到计时器页面
         self._prev_ppt_path = None
 
     def on_timer_update(self, running, paused, remaining, total, session_finished):
@@ -309,6 +300,3 @@ class MainWindow(MSFluentWindow):
         event.ignore()
         self.hide()
         InfoBar.info("提示", "程序已最小化到系统托盘", parent=self, position=InfoBarPosition.TOP, duration=2000)
-
-
-import os
