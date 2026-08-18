@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from qfluentwidgets import (
-    SimpleCardWidget, CardWidget, HeaderCardWidget, GroupHeaderCardWidget,
+    SimpleCardWidget, CardWidget, HeaderCardWidget,
     LineEdit, DoubleSpinBox, PushButton, PrimaryPushButton,
     BodyLabel, StrongBodyLabel, CaptionLabel,
     FluentIcon as FIF, MessageBox
@@ -64,13 +64,18 @@ class PPTManagerWindow(QWidget):
         scroll.setWidget(self.list_container)
         layout.addWidget(scroll, 1)
 
-        # 添加区域：卡片
-        add_card = GroupHeaderCardWidget()
-        add_card.setTitle("添加PPT文件")
+        # 添加区域：卡片（用 SimpleCardWidget 避免 GroupHeaderCardWidget.addGroup 版本兼容问题）
+        add_card = SimpleCardWidget()
         add_card.setBorderRadius(10)
+        acl = QVBoxLayout(add_card)
+        acl.setContentsMargins(24, 16, 24, 16)
+        acl.setSpacing(12)
+        acl.addWidget(StrongBodyLabel("添加PPT文件"))
 
         # 文件路径行
-        file_row = QHBoxLayout()
+        file_widget = QWidget()
+        file_row = QHBoxLayout(file_widget)
+        file_row.setContentsMargins(0, 0, 0, 0)
         file_row.setSpacing(8)
         file_row.addWidget(BodyLabel("文件路径"))
         self.entry_file_path = LineEdit()
@@ -80,10 +85,12 @@ class PPTManagerWindow(QWidget):
         btn_browse.clicked.connect(self._browse_file)
         file_row.addWidget(self.entry_file_path, 1)
         file_row.addWidget(btn_browse)
-        add_card.addGroup(file_row)
+        acl.addWidget(file_widget)
 
         # 时间行
-        time_row = QHBoxLayout()
+        time_widget = QWidget()
+        time_row = QHBoxLayout(time_widget)
+        time_row.setContentsMargins(0, 0, 0, 0)
         time_row.setSpacing(8)
         time_row.addWidget(BodyLabel("时间(分钟)"))
         self.spin_time = DoubleSpinBox()
@@ -96,7 +103,7 @@ class PPTManagerWindow(QWidget):
         btn_add.clicked.connect(self._add_ppt)
         time_row.addWidget(btn_add)
         time_row.addStretch()
-        add_card.addGroup(time_row)
+        acl.addWidget(time_widget)
 
         layout.addWidget(add_card)
 
