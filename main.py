@@ -53,7 +53,9 @@ class SlidesTimerApp(QObject):
         self.banner = BannerOverlay()
 
         # 演示监控
-        self.monitor = SlideShowMonitor(self.on_slideshow_start, self.on_slideshow_end)
+        self.monitor = SlideShowMonitor()
+        self.monitor.slideshow_started.connect(self._on_slideshow_start)
+        self.monitor.slideshow_ended.connect(self._on_slideshow_end)
 
         # 窗口引用（防止 GC）
         self._settings_window = None
@@ -80,13 +82,8 @@ class SlidesTimerApp(QObject):
 
     # ── 计时核心逻辑 ──────────────────────────────────────────
 
-    def on_slideshow_start(self, ppt_path=None):
-        log.info(f"on_slideshow_start called from thread. Path: {ppt_path}")
-        # 确保在主线程执行 UI 操作（monitor 在后台线程中调用）
-        QTimer.singleShot(0, lambda: self._on_slideshow_start(ppt_path))
-
     def _on_slideshow_start(self, ppt_path=None):
-        log.info(f"_on_slideshow_start (main thread). Path: {ppt_path}")
+        log.info(f"Slideshow started: {ppt_path}")
         log.info(f"  timer_paused={self.timer_paused}, session_finished={self.session_finished}")
         if self.timer_paused and not self.session_finished:
             log.info("Resuming previous session...")
@@ -96,11 +93,6 @@ class SlidesTimerApp(QObject):
             self._emit_update()
         else:
             self._start_new_session(ppt_path)
-
-    def on_slideshow_end(self):
-        log.info("Slideshow Ended.")
-        # 确保在主线程执行 UI 操作（monitor 在后台线程中调用）
-        QTimer.singleShot(0, lambda: self._on_slideshow_end())
 
     def _on_slideshow_end(self):
         if self.timer_running:

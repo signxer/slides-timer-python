@@ -5,9 +5,14 @@ import subprocess
 import re
 import os
 
+from PySide6.QtCore import QObject, Signal
 
-class SlideShowMonitor:
+
+class SlideShowMonitor(QObject):
     """跨平台幻灯片放映状态监控"""
+
+    slideshow_started = Signal(str)  # 携带 ppt_path
+    slideshow_ended = Signal()
 
     # 关键词匹配（窗口标题中包含这些词表示正在放映）
     SLIDESHOW_KEYWORDS = [
@@ -213,14 +218,11 @@ class SlideShowMonitor:
         if active and not self.is_slideshow_active:
             self.is_slideshow_active = True
             self.current_ppt_path = ppt_path
-            if self.on_start:
-                self.on_start(ppt_path)
+            self.slideshow_started.emit(ppt_path)
         elif not active and self.is_slideshow_active:
             self.is_slideshow_active = False
             self.current_ppt_path = None
-            if self.on_end:
-                self.on_end()
+            self.slideshow_ended.emit()
         elif active and self.is_slideshow_active and ppt_path_changed:
             self.current_ppt_path = ppt_path
-            if self.on_start:
-                self.on_start(ppt_path)
+            self.slideshow_started.emit(ppt_path)
